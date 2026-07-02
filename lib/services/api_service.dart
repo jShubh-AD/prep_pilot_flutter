@@ -4,27 +4,71 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 
 class Subject {
-  final String subjectId;
-  final String subjectName;
-  final String? university;
-  final String? subjectCode;
+  bool? success;
+  String? message;
+  List<Data>? data;
 
-  Subject({
-    required this.subjectId,
-    required this.subjectName,
-    this.university,
-    this.subjectCode,
-  });
+  Subject({this.success, this.message, this.data});
 
-  factory Subject.fromJson(Map<String, dynamic> json) {
-    return Subject(
-      subjectId: json['subject_id'] ?? '',
-      subjectName: json['subject_name'] ?? '',
-      university: json['university'],
-      subjectCode: json['subject_code'],
-    );
+  Subject.fromJson(Map<String, dynamic> json) {
+    success = json['success'];
+    message = json['message'];
+    if (json['data'] != null) {
+      data = <Data>[];
+      json['data'].forEach((v) {
+        data!.add(new Data.fromJson(v));
+      });
+    }
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data =  Map<String, dynamic>();
+    data['success'] = this.success;
+    data['message'] = this.message;
+    if (this.data != null) {
+      data['data'] = this.data!.map((v) => v.toJson()).toList();
+    }
+    return data;
   }
 }
+
+class Data {
+  int? subjectId;
+  String? subjectName;
+  List<String>? subjectCodes;
+  List<String>? universities;
+  List<String>? slugs;
+  int? semester;
+
+  Data(
+      {this.subjectId,
+        this.subjectName,
+        this.subjectCodes,
+        this.universities,
+        this.slugs,
+        this.semester});
+
+  Data.fromJson(Map<String, dynamic> json) {
+    subjectId = json['subject_id'];
+    subjectName = json['subject_name'];
+    subjectCodes = json['subject_codes'].cast<String>();
+    universities = json['universities'].cast<String>();
+    slugs = json['slugs'].cast<String>();
+    semester = json['semester'];
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = new Map<String, dynamic>();
+    data['subject_id'] = this.subjectId;
+    data['subject_name'] = this.subjectName;
+    data['subject_codes'] = this.subjectCodes;
+    data['universities'] = this.universities;
+    data['slugs'] = this.slugs;
+    data['semester'] = this.semester;
+    return data;
+  }
+}
+
 
 class QueryResponse {
   final String answer;
@@ -52,33 +96,22 @@ class QueryResponse {
 }
 
 class ApiService {
-  static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://192.168.1.7:8000';
-    } else {
-      try {
-        if (Platform.isAndroid) {
-          return 'http://192.168.1.7:8000';
-        }
-      } catch (e) {
-        // Fallback for non-android systems or platforms where Platform.isAndroid throws
-      }
-      return 'http://192.168.1.7:8000';
-    }
-  }
+  static String  baseUrl = "http://3.111.245.143:8000";
 
   // Fetch all subjects from Backend
-  static Future<List<Subject>> fetchSubjects() async {
-    final url = Uri.parse('$baseUrl/subjects');
+  static Future<Subject> fetchSubjects() async {
+    final url = Uri.parse('http://3.111.245.143:8000/subjects');
     try {
       final response = await http.get(url).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => Subject.fromJson(json)).toList();
+        final json = jsonDecode(response.body);
+        final  subjects = Subject.fromJson(json);
+        return subjects;
       } else {
         throw Exception('Failed to load subjects. Status code: ${response.statusCode}');
       }
     } catch (e) {
+      print(e);
       throw Exception('Failed to connect to backend: $e');
     }
   }

@@ -50,7 +50,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  late Future<List<Subject>> _subjectsFuture;
+  late Future<Subject> _subjectsFuture;
 
   @override
   void initState() {
@@ -167,7 +167,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               // Subject List / Grid
               SliverPadding(
                 padding: const EdgeInsets.all(24.0),
-                sliver: FutureBuilder<List<Subject>>(
+                sliver: FutureBuilder<Subject>(
                   future: _subjectsFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -183,7 +183,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       return SliverToBoxAdapter(
                         child: _buildErrorCard(snapshot.error.toString()),
                       );
-                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    } else if (!snapshot.hasData || snapshot.data!.data!.isEmpty) {
                       return SliverToBoxAdapter(
                         child: _buildEmptyCard(),
                       );
@@ -199,20 +199,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
-                          final subject = subjects[index];
+                          final subject = subjects.data![index];
                           return SubjectCard(
-                            subject: subject,
+                            subjects: subject,
                             index: index,
                             onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => ChatScreen(subject: subject),
-                                ),
-                              );
+                              // Navigator.of(context).push(
+                              //   MaterialPageRoute(
+                              //     builder: (context) => ChatScreen(subject: subject),
+                              //   ),
+                              // );
                             },
                           );
                         },
-                        childCount: subjects.length,
+                        childCount: subjects.data!.length,
                       ),
                     );
                   },
