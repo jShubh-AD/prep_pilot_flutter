@@ -204,11 +204,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             subjects: subject,
                             index: index,
                             onTap: () {
-                              // Navigator.of(context).push(
-                              //   MaterialPageRoute(
-                              //     builder: (context) => ChatScreen(subject: subject),
-                              //   ),
-                              // );
+                               Navigator.of(context).push(
+                                 MaterialPageRoute(
+                                  builder: (context) => ChatScreen(subject: subject),
+                                ),
+                              );
                             },
                           );
                         },
@@ -219,38 +219,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
 
-              // Footer showing local environment details
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 24.0, top: 48.0),
-                  child: Center(
-                    child: Column(
-                      children: [
-                        Text(
-                          'Connected to API:',
-                          style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.3)),
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            ApiService.baseUrl,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontFamily: 'monospace',
-                              color: Colors.white.withOpacity(0.5),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              
             ],
           ),
         ),
