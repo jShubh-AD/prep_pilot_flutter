@@ -268,7 +268,7 @@ class ChatIdResponse {
 // --------------------------
 
 class ApiService {
-  static const String baseUrl = "http://52.66.210.111:8000";
+  static const String baseUrl = "http://13.201.69.169:8000";
 
   // Fetch all subjects
   static Future<Subject> fetchSubjects() async {
@@ -309,8 +309,7 @@ class ApiService {
               'subject_id': int.parse(subjectId), // agar subjectId String hai
               'top_k': topK,
             }),
-          )
-          .timeout(const Duration(minutes: 2));
+          );
 
       print('📥 Status: ${response.statusCode} | Body: ${response.body}');
 
