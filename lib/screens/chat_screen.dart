@@ -1,9 +1,13 @@
+import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_sound/public/flutter_sound.dart';
 import '../services/api_service.dart';
+import 'dart:convert';
 
 class ChatMessage {
-  final String text;
+  String text;
   final bool isUser;
   final DateTime timestamp;
   final List<String>? sources;
@@ -28,28 +32,45 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+  // ================ AUDIO =======================
+  late final FlutterSoundPlayer _player;
+
+  // ================ Messages =======================
   final TextEditingController _messageController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
+
+  // ================ UI =======================
+  final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
 
-  final List<String> _suggestedPrompts = [
-    'Explain the core concept in simple terms.',
-    'Give me 3 practice questions with answers.',
-    'Summarize the key points of this subject.',
-  ];
+  Future<void> _initAudio() async {
+    await _player.openPlayer();
+    await _player.startPlayerFromStream(
+      codec: Codec.pcm16,
+      sampleRate: 24000,
+      numChannels: 1,
+      interleaved: false,
+      bufferSize: 100,
+    );
+  }
 
   @override
   void initState() {
     super.initState();
-    // Add welcome message
-    _messages.add(
-      ChatMessage(
-        text:
-            'Hello! I am your AI exam prep tutor for **${widget.subject.subjectName}**.\n\nAsk me anything about this course materials. You can ask for summaries, practice questions, or detailed explanations!',
-        isUser: false,
-        timestamp: DateTime.now(),
-      ),
+    _initPlayer();
+  }
+
+  Future<void> _initPlayer() async {
+    _player = FlutterSoundPlayer();
+
+    await _player.openPlayer();
+
+    await _player.startPlayerFromStream(
+      codec: Codec.pcm16,
+      sampleRate: 24000,
+      numChannels: 1,
+      interleaved: false,
+      bufferSize: 8192,
     );
   }
 
@@ -57,6 +78,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _player.closePlayer();
     super.dispose();
   }
 
@@ -74,44 +96,49 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
-
     _messageController.clear();
     setState(() {
-      _messages.add(
-        ChatMessage(text: text, isUser: true, timestamp: DateTime.now()),
-      );
+      _messages.add(ChatMessage(text: text, isUser: true, timestamp: DateTime.now()),);
+      _messages.add(ChatMessage(text: "", isUser: false, timestamp: DateTime.now()),);
       _isLoading = true;
     });
     _scrollToBottom();
-
     try {
-      print("API Called");
-      final response = await ApiService.querySubject(
-        text,
-        widget.subject.subjectId.toString(),
+      await ApiService.querySubject(
+        query: text,
+        subjectId: widget.subject.subjectId ?? 7,
+        tokenEvent: (event) {
+          print("[PARSED EVENT]: ${event}");
+          if (event.text != null) {
+            final message = _messages.last;
+            setState(() {
+              print("[ADDING TEXT]: ${event.text}");
+              message.text += event.text!;
+            });
+            _scrollToBottom();
+          }
+          if (event.audio != null) {
+            final bytes = base64Decode(event.audio!);
+            final pcm = Int16List.view(
+              bytes.buffer,
+              bytes.offsetInBytes,
+              bytes.lengthInBytes ~/ 2,
+            );
+            _player.int16Sink?.add([pcm]);
+          }
+        },
+        doneEvent: (event) async {
+          setState(() => _isLoading = false);
+          // await _player.stopPlayer();
+        },
+        format: "audio",
       );
-
-      print("RESPONSE: $response");
-
-      setState(() {
-        _isLoading = false;
-        _messages.add(
-          ChatMessage(
-            text: response.answer,
-            isUser: false,
-            timestamp: DateTime.now(),
-            sources: response.llmContext,
-            dbFound: response.dbFound,
-          ),
-        );
-      });
     } catch (e) {
       setState(() {
         _isLoading = false;
         _messages.add(
           ChatMessage(
-            text:
-                '⚠️ **Error:** Failed to retrieve answer.\n\n_Details:_ ${e.toString()}',
+            text: '**Error:** ${e.toString()}',
             isUser: false,
             timestamp: DateTime.now(),
           ),
@@ -126,7 +153,8 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A), // Premium Slate 900
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B), // Slate 800
+        backgroundColor: const Color(0xFF1E293B),
+        // Slate 800
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -219,31 +247,31 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
 
           // Quick Suggestion Chips (only when not loading and no messages sent yet, or simple chips at the bottom)
-          if (!_isLoading && _messages.length == 1)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: _suggestedPrompts.map((prompt) {
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0, bottom: 8.0),
-                      child: ActionChip(
-                        backgroundColor: const Color(0xFF1E293B),
-                        label: Text(
-                          prompt,
-                          style: const TextStyle(
-                            color: Color(0xFF818CF8),
-                            fontSize: 12.0,
-                          ),
-                        ),
-                        onPressed: () => _sendMessage(prompt),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
+          // if (!_isLoading && _messages.length == 1)
+          //   Padding(
+          //     padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          //     child: SingleChildScrollView(
+          //       scrollDirection: Axis.horizontal,
+          //       child: Row(
+          //         children: _suggestedPrompts.map((prompt) {
+          //           return Padding(
+          //             padding: const EdgeInsets.only(right: 8.0, bottom: 8.0),
+          //             child: ActionChip(
+          //               backgroundColor: const Color(0xFF1E293B),
+          //               label: Text(
+          //                 prompt,
+          //                 style: const TextStyle(
+          //                   color: Color(0xFF818CF8),
+          //                   fontSize: 12.0,
+          //                 ),
+          //               ),
+          //               onPressed: () => _sendMessage(prompt),
+          //             ),
+          //           );
+          //         }).toList(),
+          //       ),
+          //     ),
+          //   ),
 
           // Message Input Field
           _buildInputBar(),
