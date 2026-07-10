@@ -23,11 +23,11 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.light,
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFE5E5E5),
-        primaryColor: const Color(0xFF10A37F),
+        primaryColor: const Color(0xFFE5E5E5),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF10A37F),
+          seedColor: const Color(0xFFE5E5E5),
           brightness: Brightness.light,
-          primary: const Color(0xFF10A37F),
+          primary: const Color(0xFFE5E5E5),
           secondary: const Color(0xFF6E48AA), // slightly deeper purple for light bg
           surface: const Color(0xFFF7F7F8),
         ),

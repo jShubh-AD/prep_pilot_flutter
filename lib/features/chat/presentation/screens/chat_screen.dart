@@ -166,17 +166,8 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF10A37F),
+                            Color(0xFF000000),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Searching study documents...',
-                        style: TextStyle(
-                          color: const Color(0xFFECECF1).withOpacity(0.6),
-                          fontSize: 13.0,
-                          fontStyle: FontStyle.italic,
                         ),
                       ),
                     ],

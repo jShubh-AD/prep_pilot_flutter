@@ -67,6 +67,7 @@ class _ChatInputBoxState extends State<ChatInputBox> {
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: TextField(
+                  cursorColor: Colors.black,
                   controller: _messageController,
                   focusNode: _focusNode,
                   maxLines: 10,

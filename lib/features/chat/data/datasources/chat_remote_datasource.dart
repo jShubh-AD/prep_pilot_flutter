@@ -6,6 +6,7 @@ abstract class ChatRemoteDataSource {
   Stream<SSEModel> querySubject({
     required String query,
     required int subjectId,
+    String? sessionId,
     String format = "text",
   });
 }
@@ -15,6 +16,7 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
   Stream<SSEModel> querySubject({
     required String query,
     required int subjectId,
+    String? sessionId,
     String format = "text",
   }) {
     return SSEClient.subscribeToSSE(
@@ -24,9 +26,11 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream',
       },
+
       body: {
         'query': query,
         'subject_id': subjectId,
+        'session_id': sessionId,
         'format': format,
       },
     );

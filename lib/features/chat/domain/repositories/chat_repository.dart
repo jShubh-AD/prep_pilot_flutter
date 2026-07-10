@@ -26,11 +26,3 @@ class ChatStreamDone extends ChatStreamEvent {
   @override
   List<Object?> get props => [done];
 }
-
-abstract class ChatRepository {
-  Stream<ChatStreamEvent> querySubject({
-    required String query,
-    required int subjectId,
-    String format = "text",
-  });
-}
