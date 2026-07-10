@@ -107,33 +107,42 @@ class _ChatScreenState extends State<ChatScreen> {
 
         return Scaffold(
           appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
             title: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   widget.subject.subjectName.toString(),
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Colors.black,
                     fontSize: 18.0,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 Text(
                   widget.subject.subjectCodes?.isNotEmpty == true
                       ? widget.subject.subjectCodes!.first
                       : 'PrepPilot Active Session',
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
           ),
+
           body: Column(
             children: [
               // Message List
               Expanded(
                 child: ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
@@ -157,7 +166,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF6366F1),
+                            Color(0xFF10A37F),
                           ),
                         ),
                       ),
@@ -165,7 +174,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       Text(
                         'Searching study documents...',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
+                          color: const Color(0xFFECECF1).withOpacity(0.6),
                           fontSize: 13.0,
                           fontStyle: FontStyle.italic,
                         ),
@@ -175,7 +184,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
 
               // Message Input Field
-              ChatInputBox(onTap: _sendMessage, longPress: (){})
+              ChatInputBox(onTap: _sendMessage, longPress: () {print("long press");}),
             ],
           ),
         );
@@ -188,11 +197,11 @@ class _ChatScreenState extends State<ChatScreen> {
         ? CrossAxisAlignment.end
         : CrossAxisAlignment.start;
     final bubbleColor = message.isUser
-        ? Colors.grey.shade200
+        ? Colors.grey.shade50.withOpacity(0.8)
         : Colors.transparent;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: Column(
         crossAxisAlignment: align,
         children: [
@@ -204,49 +213,62 @@ class _ChatScreenState extends State<ChatScreen> {
             children: [
               Flexible(
                 child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: message.isUser ? 240 : double.infinity
+                  ),
                   decoration: BoxDecoration(
                     color: bubbleColor,
-                    borderRadius: BorderRadius.circular(30)
+                    borderRadius: BorderRadius.circular(20.0),
                   ),
-                  padding: const EdgeInsets.all(22),
+                  padding: message.isUser
+                      ? const EdgeInsets.symmetric(
+                          vertical: 10.0,
+                          horizontal: 16.0,
+                        )
+                      : const EdgeInsets.symmetric(
+                          vertical: 8.0,
+                          horizontal: 4.0,
+                        ),
                   child: MarkdownBody(
                     data: message.text,
                     styleSheet: MarkdownStyleSheet(
                       p: const TextStyle(
                         color: Colors.black,
-                        fontSize: 15.0,
-                        height: 1.4,
+                        fontSize: 16.0,
+                        height: 1.5,
                       ),
                       strong: const TextStyle(
                         color: Colors.black,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                       ),
                       em: const TextStyle(
                         color: Colors.black,
                         fontStyle: FontStyle.italic,
                       ),
-                      code: TextStyle(
-                        color: const Color(0xFFF472B6),
-                        backgroundColor: Colors.black.withOpacity(0.3),
+                      code: const TextStyle(
+                        color: Colors.black,
+                        backgroundColor: Color(0xFF1E1E1E),
                         fontFamily: 'monospace',
-                        fontSize: 13.0,
+                        fontSize: 14.0,
                       ),
                       codeblockDecoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.4),
+                        color: Colors.black,
                         borderRadius: BorderRadius.circular(8.0),
                       ),
-                      listBullet: const TextStyle(color: Colors.white),
+                      listBullet: const TextStyle(color: Colors.black)),
                     ),
                   ),
-                ),
-              ),
+                )
             ],
           ),
           Padding(
-            padding: const EdgeInsets.only(left: 44.0, right: 44.0, top: 4.0),
+            padding: EdgeInsets.only(
+              left: message.isUser ? 0.0 : 8.0,
+              right: message.isUser ? 8.0 : 0.0,
+            ),
             child: Text(
               '${message.timestamp.hour.toString().padLeft(2, '0')}:${message.timestamp.minute.toString().padLeft(2, '0')}',
-              style: const TextStyle(color: Colors.white38, fontSize: 10.0),
+              style: const TextStyle(color: Colors.black, fontSize: 10.0),
             ),
           ),
         ],

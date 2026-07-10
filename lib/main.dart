@@ -22,23 +22,28 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         brightness: Brightness.light,
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFFFFFFF),
-        primaryColor: const Color(0xFF6366F1), // Indigo 500
+        scaffoldBackgroundColor: const Color(0xFFE5E5E5),
+        primaryColor: const Color(0xFF10A37F),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6366F1),
+          seedColor: const Color(0xFF10A37F),
           brightness: Brightness.light,
-          primary: const Color(0xFF6366F1),
-          secondary: const Color(0xFFEC4899), // Pink 500
-          surface: Colors.white,
+          primary: const Color(0xFF10A37F),
+          secondary: const Color(0xFF6E48AA), // slightly deeper purple for light bg
+          surface: const Color(0xFFF7F7F8),
         ),
         textTheme: const TextTheme(
           displayMedium: TextStyle(
-            color: Colors.black,
+            color: Color(0xFF0D0D0D),
             fontWeight: FontWeight.bold,
             letterSpacing: -0.5,
           ),
-          bodyLarge: TextStyle(color: Colors.black87),
-          bodyMedium: TextStyle(color: Colors.black54),
+          bodyLarge: TextStyle(color: Color(0xFF0D0D0D)),
+          bodyMedium: TextStyle(color: Color(0xFF676767)),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFE5E5E5),
+          foregroundColor: Color(0xFF0D0D0D),
+          elevation: 0,
         ),
       ),
       home: BlocProvider<SubjectBloc>(

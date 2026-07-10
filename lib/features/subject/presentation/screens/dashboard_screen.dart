@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile/features/chat/presentation/bloc/chat_bloc.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_constants.dart';
-import '../../../../widgets/subject_card.dart';
+import '../../../../core/widgets/subject_card.dart';
 import '../../../chat/presentation/screens/chat_screen.dart';
 import '../bloc/subject_bloc.dart';
 import '../bloc/subject_event.dart';
@@ -43,99 +43,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       body: SafeArea(
         child: RefreshIndicator(
+          color: Colors.black,
           onRefresh: _refreshSubjects,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              // Beautiful Header App Bar
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF6366F1), Color(0xFFEC4899)],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                padding: const EdgeInsets.all(8),
-                                child: const Icon(
-                                  Icons.bolt,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              const Text(
-                                'PrepPilot',
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                            ],
+              SliverAppBar(
+                floating: true,
+                surfaceTintColor: Colors.transparent,
+                expandedHeight: 70,
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                title: const Text(
+                  'PrepPilot',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black,
+                  ),
+                ),
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Your AI Exam Prep Companion',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.black.withOpacity(0.6),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Your AI Exam Prep Companion',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.white.withOpacity(0.6),
-                            ),
-                          ),
-                        ],
-                      ),
-                      IconButton.filledTonal(
-                        onPressed: _triggerRefresh,
-                        icon: const Icon(Icons.refresh),
-                        tooltip: 'Reload Subjects',
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
 
-              // Title Section
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-                  child: Row(
-                    children: [
-                      const Text(
-                        'Select a Subject',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF14B8A6), // Green dot
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
+              SliverAppBar(
+                pinned: true,
+                floating: true,
+                snap: true,
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                surfaceTintColor: Colors.transparent,
+                title: const Text(
+                  'Available Subjects',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
                   ),
                 ),
               ),
 
               // Subject List / Grid
               SliverPadding(
-                padding: const EdgeInsets.all(24.0),
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 sliver: BlocBuilder<SubjectBloc, SubjectState>(
                   builder: (context, state) {
                     if (state is SubjectInitial || state is SubjectLoading) {
@@ -154,9 +118,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     } else if (state is SubjectLoaded) {
                       final subjects = state.subject;
                       if (subjects.data == null || subjects.data!.isEmpty) {
-                        return SliverToBoxAdapter(
-                          child: _buildEmptyCard(),
-                        );
+                        return SliverToBoxAdapter(child: _buildEmptyCard());
                       }
 
                       return SliverGrid(
@@ -166,32 +128,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           crossAxisSpacing: 16.0,
                           childAspectRatio: 0.85,
                         ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final subject = subjects.data![index];
-                            return SubjectCard(
-                              subjects: subject,
-                              index: index,
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => BlocProvider(
-                                      create: (context) => sl<ChatBloc>(),
-                                      child: ChatScreen(subject: subject),
-                                    ),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final subject = subjects.data![index];
+                          return SubjectCard(
+                            subjects: subject,
+                            index: index,
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => BlocProvider(
+                                    create: (context) => sl<ChatBloc>(),
+                                    child: ChatScreen(subject: subject),
                                   ),
-                                );
-                              },
-                            );
-                          },
-                          childCount: subjects.data!.length,
-                        ),
+                                ),
+                              );
+                            },
+                          );
+                        }, childCount: subjects.data!.length),
                       );
                     }
                     return const SliverToBoxAdapter(child: SizedBox.shrink());
                   },
                 ),
               ),
+              SliverFillRemaining(),
             ],
           ),
         ),
@@ -242,7 +202,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               backgroundColor: const Color(0xFF1E293B),
               foregroundColor: Colors.white,
             ),
-          )
+          ),
         ],
       ),
     );
@@ -259,11 +219,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.school_outlined,
-            color: Color(0xFF6366F1),
-            size: 54,
-          ),
+          const Icon(Icons.school_outlined, color: Color(0xFF6366F1), size: 54),
           const SizedBox(height: 16),
           const Text(
             'No Subjects Yet',

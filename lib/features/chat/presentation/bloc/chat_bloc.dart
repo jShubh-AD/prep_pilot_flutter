@@ -20,7 +20,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     Emitter<ChatState> emit,
   ) {
     emit(ChatState.initial(
-        'Ask me anything about **${event.subject.subjectName}**!'));
+        'Ask me anything about ${event.subject.subjectName}!'));
   }
 
   void _onClearChatHistory(
@@ -28,7 +28,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     Emitter<ChatState> emit,
   ) {
     emit(ChatState.initial(
-        'Chat history cleared. Ask me anything about **${event.subject.subjectName}**!'));
+        'Ask me anything about ${event.subject.subjectName}!'));
   }
 
   Future<void> _onSendChatMessage(
@@ -89,6 +89,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
               clearAudio: audioEvent == null,
             );
           } else if (eventData is ChatStreamDone) {
+            // todo: store the session id in local storage with total tokens used and left
             return state.copyWith(
               isLoading: false,
               clearAudio: true,
