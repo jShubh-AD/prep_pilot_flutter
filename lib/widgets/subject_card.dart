@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
+import '../features/subject/domain/entities/subject_item.dart';
 
 class SubjectCard extends StatefulWidget {
   final SubjectItem subjects;

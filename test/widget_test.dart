@@ -1,7 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/main.dart';
+import 'package:mobile/core/di/injection.dart' as di;
 
 void main() {
+  setUpAll(() async {
+    await di.init();
+  });
+
   testWidgets('Dashboard basic smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const MyApp());
