@@ -36,7 +36,7 @@ Future<void> init() async {
   sl.registerLazySingleton<ChatRepository>(
       () => ChatRepositoryImpl(remoteDataSource: sl(), localDataSource: sl()));
   sl.registerLazySingleton<ChatRemoteDataSource>(
-      () => ChatRemoteDataSourceImpl());
+      () => ChatRemoteDataSourceImpl(sl()));
   sl.registerLazySingleton<ChatLocalDataSource>(
       () => ChatLocalDataSourceImpl(sl<Box>()));
 

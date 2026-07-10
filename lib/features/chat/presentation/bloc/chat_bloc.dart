@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile/features/chat/domain/chat_usecase.dart';
 import '../../domain/entities/chat_message.dart';
@@ -47,7 +46,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       messages: updatedMessagesWithUser,
       clearAudio: true,
     ));
-    if (state.tokenLeft == null || state.tokenLeft! <= 0) {
+    if (state.tokenLeft != null && state.tokenLeft! <= 0) {
       final currentMessages = List<ChatMessage>.from(state.messages);
       currentMessages.add(ChatMessage(
         text: '**Limit Exceeded**: You have exceeded your daily limit of 20,000 Tokens.\n*Tokens left: ${state.tokenLeft ?? 0}*',
@@ -66,7 +65,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         text: "", isUser: false, timestamp: DateTime.now());
 
     final updateMessagesWithBotPlaceholder = List<ChatMessage>.from(state.messages)
-      ..addAll([userMsg, botPlaceholder]);
+      ..addAll([botPlaceholder]);
 
     emit(state.copyWith(
       messages: updateMessagesWithBotPlaceholder,
