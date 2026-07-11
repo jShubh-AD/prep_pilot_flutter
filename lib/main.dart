@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'core/di/injection.dart' as di;
-import 'core/di/injection.dart';
+import 'package:mobile/core/services/hive_service.dart';
 import 'features/subject/presentation/bloc/subject_bloc.dart';
 import 'features/subject/presentation/screens/dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await di.init();
+  HiveService.hiveInit();
   runApp(const MyApp());
 }
 
@@ -47,7 +46,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
       home: BlocProvider<SubjectBloc>(
-        create: (context) => sl<SubjectBloc>(),
+        create: (context) => SubjectBloc(),
         child: const DashboardScreen(),
       ),
     );

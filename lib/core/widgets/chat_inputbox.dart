@@ -94,8 +94,8 @@ class _ChatInputBoxState extends State<ChatInputBox> {
             const SizedBox(width: 8.0),
             AnimatedContainer(
               duration: const Duration(milliseconds: 150),
-              width: 50,
-              height: 50,
+              width: 45,
+              height: 45,
               decoration: BoxDecoration(
                 color: _hasText
                     ? Colors.blueAccent
@@ -103,6 +103,7 @@ class _ChatInputBoxState extends State<ChatInputBox> {
                 shape: BoxShape.circle,
               ),
               child: InkWell(
+                overlayColor: WidgetStatePropertyAll(Colors.transparent),
                 onLongPress: _hasText ? null :widget.longPress,
                 child: IconButton(
                   icon: Icon(

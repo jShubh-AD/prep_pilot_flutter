@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_sound/public/flutter_sound.dart';
 import 'package:mobile/core/widgets/chat_inputbox.dart';
+import 'package:mobile/features/chat/presentation/widgets/limit_dialog.dart';
 import '../../../subject/domain/entities/subject_item.dart';
 import '../../domain/entities/chat_message.dart';
 import '../bloc/chat_bloc.dart';
@@ -78,10 +79,19 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
   }
 
+  DateTime _nextMidnight() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day + 1);
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<ChatBloc, ChatState>(
       listener: (context, state) {
+        if(state.showLimitExceededDialog){
+          showFreeLimitDialog(context, usedTokens: 20000, refreshAt: _nextMidnight());
+        }
+
         _scrollToBottom();
 
         // Listen for new audio chunks to play
@@ -124,10 +134,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   widget.subject.subjectCodes?.isNotEmpty == true
                       ? widget.subject.subjectCodes!.first
                       : 'PrepPilot Active Session',
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: Colors.black, fontSize: 12),
                 ),
               ],
             ),
@@ -175,7 +182,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
 
               // Message Input Field
-              ChatInputBox(onTap: _sendMessage, longPress: () {print("long press");}),
+              ChatInputBox(
+                onTap: _sendMessage,
+                longPress: () {
+                  print("long press");
+                },
+              ),
             ],
           ),
         );
@@ -205,7 +217,7 @@ class _ChatScreenState extends State<ChatScreen> {
               Flexible(
                 child: Container(
                   constraints: BoxConstraints(
-                    maxWidth: message.isUser ? 240 : double.infinity
+                    maxWidth: message.isUser ? 240 : double.infinity,
                   ),
                   decoration: BoxDecoration(
                     color: bubbleColor,
@@ -246,21 +258,12 @@ class _ChatScreenState extends State<ChatScreen> {
                         color: Colors.black,
                         borderRadius: BorderRadius.circular(8.0),
                       ),
-                      listBullet: const TextStyle(color: Colors.black)),
+                      listBullet: const TextStyle(color: Colors.black),
                     ),
                   ),
-                )
+                ),
+              ),
             ],
-          ),
-          Padding(
-            padding: EdgeInsets.only(
-              left: message.isUser ? 0.0 : 8.0,
-              right: message.isUser ? 8.0 : 0.0,
-            ),
-            child: Text(
-              '${message.timestamp.hour.toString().padLeft(2, '0')}:${message.timestamp.minute.toString().padLeft(2, '0')}',
-              style: const TextStyle(color: Colors.black, fontSize: 10.0),
-            ),
           ),
         ],
       ),

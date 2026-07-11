@@ -8,6 +8,10 @@ abstract class ChatEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+class LimitDialogDismissed extends ChatEvent{
+  const LimitDialogDismissed();
+}
+
 class InitChatSession extends ChatEvent {
   final SubjectItem subject;
 

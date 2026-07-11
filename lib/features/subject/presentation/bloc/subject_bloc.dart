@@ -4,11 +4,10 @@ import 'subject_event.dart';
 import 'subject_state.dart';
 
 class SubjectBloc extends Bloc<SubjectEvent, SubjectState> {
-  final GetSubjectsUseCase getSubjectsUseCase;
-
-  SubjectBloc({required this.getSubjectsUseCase}) : super(SubjectInitial()) {
+  SubjectBloc() : super(SubjectInitial()) {
     on<FetchSubjectsEvent>(_onFetchSubjects);
   }
+  final GetSubjectsUseCase getSubjectsUseCase = GetSubjectsUseCase();
 
   Future<void> _onFetchSubjects(
     FetchSubjectsEvent event,

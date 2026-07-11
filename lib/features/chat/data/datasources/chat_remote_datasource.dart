@@ -1,79 +1,119 @@
 import 'dart:convert';
-import 'package:flutter_client_sse/flutter_client_sse.dart';
-import 'package:http/http.dart' as http;
+import 'dart:developer';
+import 'package:dio/dio.dart';
+import 'package:mobile/core/errors/failures.dart';
+import 'package:mobile/core/network/dio_client.dart';
+import 'package:mobile/core/services/hive_service.dart';
+import 'package:sse_stream/sse_stream.dart';
 import '../../../../core/network/api_constants.dart';
+import '../models/done_event_model.dart';
 
-abstract class ChatRemoteDataSource {
-  Stream<SSEModel> querySubject({
-    required String query,
-    required int subjectId,
-    String? sessionId,
-    String format = "text",
-  });
-}
-
-class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
-  final http.Client _client;
-
-  ChatRemoteDataSourceImpl(this._client);
-
-  @override
-  Stream<SSEModel> querySubject({
+class ChatRemoteDataSource {
+  final dio = DioClient.instance;
+  final _sessionBox = HiveService.sessionBox;
+  Stream<SseEvent> sendSubjectQuery({
     required String query,
     required int subjectId,
     String? sessionId,
     String format = "text",
   }) async* {
-    final request = http.Request(
-      'POST',
-      Uri.parse('${ApiConstants.baseUrl}/chats/query'),
-    );
-    request.headers.addAll({
-      'Content-Type': 'application/json',
-      'Accept': 'text/event-stream',
-    });
-    request.body = jsonEncode({
-      'query': query,
-      'subject_id': subjectId,
-      'session_id': sessionId,
-      'format': format,
-    });
+    try {
+      final response = await dio.post(
+        '${ApiConstants.baseUrl}/chats/query',
+        data: {
+          'query': query,
+          'subject_id': subjectId,
+          'session_id': sessionId,
+          'format': format,
+        },
+        options: Options(
+          responseType: ResponseType.stream,
+          headers: {
+            'Accept': 'text/event-stream',
+          },
+        ),
+      );
 
-    final streamedResponse = await _client.send(request);
+      final responseBody = response.data as ResponseBody;
 
-    // Check status BEFORE treating the body as an SSE stream
-    if (streamedResponse.statusCode != 200) {
-      final errorBody = await streamedResponse.stream.bytesToString();
-      String message;
-      try {
-        final decoded = jsonDecode(errorBody);
-        message = decoded['detail'] ?? decoded['message'] ?? errorBody;
-      } catch (_) {
-        message = errorBody;
+      await for (final event in responseBody.stream
+          .cast<List<int>>()
+          .transform(utf8.decoder)
+          .transform(const SseEventTransformer())) {
+        yield event;
       }
-      throw Exception(message);
-    }
+    } on DioException catch (e, st) {
+      log(
+        "",
+        name: "Error",
+        error: e,
+        stackTrace: st,
+      );
 
-    // Only now do we parse it as SSE
-    String buffer = '';
-    await for (final chunk in streamedResponse.stream.transform(utf8.decoder)) {
-      buffer += chunk;
-      final lines = buffer.split('\n');
-      buffer = lines.removeLast(); // keep incomplete line in buffer
+      final statusCode = e.response?.statusCode ?? 500;
+      String message = e.message ?? "Unknown error";
 
-      String? event;
-      String? data;
-      for (final line in lines) {
-        if (line.startsWith('event:')) {
-          event = line.substring(6).trim();
-        } else if (line.startsWith('data:')) {
-          data = line.substring(5).trim();
-        } else if (line.isEmpty && data != null) {
-          yield SSEModel(event: event ?? 'message', data: data);
-          event = null;
-          data = null;
+      if (e.response?.data is ResponseBody) {
+        try {
+          final responseBody = e.response!.data as ResponseBody;
+
+          final body = await responseBody.stream
+              .cast<List<int>>()
+              .transform(utf8.decoder)
+              .join();
+
+          final json = jsonDecode(body);
+          message = json["detail"] ?? message;
+        } catch (_) {
+          // Keep the default message.
         }
       }
+
+      if (statusCode == 503) {
+        throw ExceededFreeLimit(
+          statusCode: statusCode,
+          message: message,
+        );
+      }
+
+      throw ServerFailure(
+        statusCode: statusCode,
+        message: message,
+      );
+    } catch (e, st) {
+      log(
+        "",
+        name: "Error",
+        error: e,
+        stackTrace: st,
+      );
+
+      throw Exception(e.toString());
     }
+  }
+
+  Future<void> saveSession({
+    required String sessionId,
+    required int tokensUsed,
+    required int tokensAvailable,
+    required double totalTime,
+  }) async {
+    await _sessionBox.put(sessionId, {
+      'session_id': sessionId,
+      'tokens_used': tokensUsed,
+      'tokens_available': tokensAvailable,
+      'total_time': totalTime,
+    });
+  }
+
+  Future<DoneEventModel?> getLastSession() async {
+    if (_sessionBox.isEmpty) return null;
+    final lastEntry = _sessionBox.values.last;
+    if (lastEntry is Map) {
+      final Map<String, dynamic> json = Map<String, dynamic>.from(lastEntry);
+      json['total_time'] ??= 0.0;
+      return DoneEventModel.fromJson(json);
+    }
+    return null;
   }
 }

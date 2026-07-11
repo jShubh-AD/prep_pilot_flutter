@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mobile/core/errors/failures.dart';
 import 'package:mobile/features/chat/domain/chat_usecase.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/repositories/chat_repository.dart';
@@ -15,6 +16,9 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<InitChatSession>(_onInitChatSession);
     on<SendChatMessage>(_onSendChatMessage);
     on<ClearChatHistory>(_onClearChatHistory);
+    on<LimitDialogDismissed>((event, emit) {
+      emit(state.copyWith(showLimitExceededDialog: false));
+    });
   }
 
   void _onInitChatSession(
@@ -55,6 +59,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       ));
       emit(state.copyWith(
         messages: currentMessages,
+        showLimitExceededDialog: true,
         isLoading: false,
         clearAudio: true,
       ));
@@ -88,7 +93,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     }
 
     try {
-      final stream = chatUseCase.sendSubjectQuery(
+      final stream = chatUseCase.querySubject(
         query: text,
         subjectId: event.subjectId,
         sessionId: sessionId,
@@ -118,13 +123,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
             }
 
             return state.copyWith(
+              showLimitExceededDialog: false,
               messages: currentMessages,
               audioChunk: audioEvent,
               clearAudio: audioEvent == null,
             );
           } else if (eventData is ChatStreamDone) {
             final doneEvent = eventData.done;
-            chatUseCase.saveSession(
+            chatUseCase.saveSessionInfo(
               sessionId: doneEvent.sessionId,
               tokensUsed: doneEvent.tokensUsed,
               tokensAvailable: doneEvent.tokensAvailable,
@@ -140,26 +146,51 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
               tokenUsed: doneEvent.tokensUsed,
               tokenLeft: doneEvent.tokensAvailable,
               clearAudio: true,
+              showLimitExceededDialog: false,
               sessionId: doneEvent.sessionId,
             );
           }
           return state;
         },
-        onError: (error, stackTrace) {
-          final errorMsg = error.toString();
-          final currentMessages = List<ChatMessage>.from(state.messages);
-          currentMessages.add(ChatMessage(
-            text: '**Error:** $errorMsg',
-            isUser: false,
-            timestamp: DateTime.now(),
-          ));
-          return state.copyWith(
-            messages: currentMessages,
-            isLoading: false,
-            clearAudio: true,
-          );
-        },
-      );
+
+          onError: (error, stackTrace) {
+            if (error is ExceededFreeLimit){
+              final currentMessages = List<ChatMessage>.from(state.messages);
+              currentMessages.add(
+                ChatMessage(
+                  text: '**Error:** ${error.message}',
+                  isUser: false,
+                  timestamp: DateTime.now(),
+                ),
+              );
+              return state.copyWith(
+                messages: currentMessages,
+                isLoading: false,
+                clearAudio: true,
+                showLimitExceededDialog: true,
+              );
+            }
+
+            final message = switch (error) {
+              ServerFailure e => e.message,
+              _ => error.toString(),
+            };
+
+            final currentMessages = List<ChatMessage>.from(state.messages);
+            currentMessages.add(
+              ChatMessage(
+                text: '**Error:** $message',
+                isUser: false,
+                timestamp: DateTime.now(),
+              ),
+            );
+
+            return state.copyWith(
+              messages: currentMessages,
+              isLoading: false,
+              clearAudio: true,
+            );
+        });
     } catch (e) {
       final errorMsg = e.toString();
       final currentMessages = List<ChatMessage>.from(state.messages);

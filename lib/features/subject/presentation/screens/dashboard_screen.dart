@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mobile/features/chat/domain/chat_repository.dart';
+import 'package:mobile/features/chat/domain/chat_usecase.dart';
 import 'package:mobile/features/chat/presentation/bloc/chat_bloc.dart';
-import '../../../../core/di/injection.dart';
-import '../../../../core/network/api_constants.dart';
 import '../../../../core/widgets/subject_card.dart';
 import '../../../chat/presentation/screens/chat_screen.dart';
 import '../bloc/subject_bloc.dart';
@@ -133,10 +133,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           subjects: subject,
                           index: index,
                           onTap: () {
+                            final chatUseCase = ChatUseCase();
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) => BlocProvider(
-                                  create: (context) => sl<ChatBloc>(),
+                                  create: (context) => ChatBloc(chatUseCase: chatUseCase),
                                   child: ChatScreen(subject: subject),
                                 ),
                               ),
@@ -183,7 +184,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Could not load subjects from PrepPilot server.\nMake sure the backend is running at ${ApiConstants.baseUrl}',
+            'Could not load subjects',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,

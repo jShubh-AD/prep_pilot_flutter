@@ -1,33 +1,34 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:mobile/core/errors/failures.dart';
+import 'package:mobile/core/network/dio_client.dart';
+
 import '../../../../core/network/api_constants.dart';
 import '../models/subject_model.dart';
 
-abstract class SubjectRemoteDataSource {
-  Future<SubjectModel> fetchSubjects();
-}
 
-class SubjectRemoteDataSourceImpl implements SubjectRemoteDataSource {
-  final http.Client client;
+class SubjectRemoteDataSourceImpl{
+  final client = DioClient.instance;
 
-  SubjectRemoteDataSourceImpl({required this.client});
-
-  @override
   Future<SubjectModel> fetchSubjects() async {
-    final url = Uri.parse('${ApiConstants.baseUrl}/subjects');
+    final url = '${ApiConstants.baseUrl}/subjects';
     try {
-      final response = await client.get(url).timeout(const Duration(seconds: 10));
-
+      final response = await client
+          .get(url)
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
-        return SubjectModel.fromJson(json);
+        return SubjectModel.fromJson(response.data);
       } else {
-        throw Exception(
-          'Failed to load subjects. Status code: ${response.statusCode}',
+        throw ServerFailure(
+          statusCode: response.statusCode!,
+          message: "Something went wrong",
         );
       }
-    } catch (e) {
-      throw Exception('Failed to connect to backend: $e');
+    } on DioException catch (e) {
+      throw ServerFailure(
+        statusCode: e.response!.statusCode!,
+        message: e.response!.data!["detail"],
+      );
     }
   }
 }

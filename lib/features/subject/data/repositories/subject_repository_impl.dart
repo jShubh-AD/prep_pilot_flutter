@@ -3,9 +3,7 @@ import '../../domain/repositories/subject_repository.dart';
 import '../datasources/subject_remote_datasource.dart';
 
 class SubjectRepositoryImpl implements SubjectRepository {
-  final SubjectRemoteDataSource remoteDataSource;
-
-  SubjectRepositoryImpl({required this.remoteDataSource});
+  final SubjectRemoteDataSourceImpl remoteDataSource = SubjectRemoteDataSourceImpl();
 
   @override
   Future<Subject> getSubjects() async {

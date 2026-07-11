@@ -1,13 +1,14 @@
+import 'package:mobile/features/chat/data/chat_repository_impl.dart';
 import 'package:mobile/features/chat/domain/repositories/chat_repository.dart';
 
 import 'chat_repository.dart';
 import 'entities/done_event.dart';
 
-class ChatUseCase {
-  final ChatRepository repository;
-  ChatUseCase({required this.repository});
+class ChatUseCase extends ChatRepository {
+  final repository = ChatRepositoryImpl();
 
-  Stream<ChatStreamEvent> sendSubjectQuery({
+  @override
+  Stream<ChatStreamEvent> querySubject({
     required String query,
     required int subjectId,
     String? sessionId,
@@ -21,12 +22,13 @@ class ChatUseCase {
     );
   }
 
+  @override
   Future<DoneEvent?> getLatestSession() async {
     return await repository.getLatestSession();
   }
 
-
-  Future<void> saveSession({
+  @override
+  Future<void> saveSessionInfo({
     required String sessionId,
     required int tokensUsed,
     required int tokensAvailable,
