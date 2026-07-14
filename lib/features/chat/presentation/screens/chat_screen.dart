@@ -3,12 +3,13 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_portal/flutter_portal.dart';
 import 'package:flutter_sound/public/flutter_sound.dart';
 import 'package:mobile/core/widgets/chat_inputbox.dart';
+import 'package:mobile/features/chat/presentation/widgets/chat_message.dart';
 import 'package:mobile/features/chat/presentation/widgets/limit_dialog.dart';
+import 'package:mobile/features/chat/presentation/widgets/listening_overlay.dart';
 import '../../../subject/domain/entities/subject_item.dart';
-import '../../domain/entities/chat_message.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_state.dart';
@@ -23,10 +24,11 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  // ================ AUDIO =======================
+  final TextEditingController messageController = TextEditingController();
+  final FocusNode focusNode = FocusNode();
+
   late final FlutterSoundPlayer _player;
 
-  // ================ UI =======================
   final ScrollController _scrollController = ScrollController();
   int _lastPlayedSeq = 0;
 
@@ -34,7 +36,13 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _initPlayer();
+    focusNode.requestFocus();
     context.read<ChatBloc>().add(InitChatSession(widget.subject));
+    messageController.addListener(_messageControllerListener);
+  }
+
+  void _messageControllerListener(){
+    setState(() {});
   }
 
   Future<void> _initPlayer() async {
@@ -51,6 +59,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    messageController.dispose();
+    focusNode.dispose();
     _scrollController.dispose();
     _player.closePlayer();
     super.dispose();
@@ -76,6 +86,8 @@ class _ChatScreenState extends State<ChatScreen> {
         subjectId: widget.subject.subjectId ?? 7,
       ),
     );
+    focusNode.unfocus();
+    messageController.clear();
     _scrollToBottom();
   }
 
@@ -88,6 +100,12 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return BlocConsumer<ChatBloc, ChatState>(
       listener: (context, state) {
+        if(state.showMicOverlay){
+          if (state.transcription.isNotEmpty && state.transcription != messageController.text){
+            messageController.text = state.transcription;
+          }
+        }
+
         if(state.showLimitExceededDialog){
           showFreeLimitDialog(context, usedTokens: 20000, refreshAt: _nextMidnight());
         }
@@ -114,159 +132,106 @@ class _ChatScreenState extends State<ChatScreen> {
       builder: (context, state) {
         final messages = state.messages;
         final isLoading = state.isLoading;
+        final showMicOverlay = state.showMicOverlay;
+        final micScale = state.micScale;
+        final transcription= state.transcription;
 
-        return Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            surfaceTintColor: Colors.transparent,
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        return PortalTarget(
+          visible: showMicOverlay,
+          anchor: const Aligned(follower: Alignment.center,target: Alignment.center),
+          portalFollower: MicOverlay(scale: micScale, transcription: transcription),
+          child: Scaffold(
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.subject.subjectName.toString(),
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 18.0,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    widget.subject.subjectCodes?.isNotEmpty == true
+                        ? widget.subject.subjectCodes!.first
+                        : 'PrepPilot Active Session',
+                    style: const TextStyle(color: Colors.black, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            body: Column(
               children: [
-                Text(
-                  widget.subject.subjectName.toString(),
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 18.0,
-                    fontWeight: FontWeight.w500,
+                // Message List
+                Expanded(
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 8.0,
+                    ),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      return ChatMessageWidget(message: message);
+                    },
                   ),
                 ),
-                Text(
-                  widget.subject.subjectCodes?.isNotEmpty == true
-                      ? widget.subject.subjectCodes!.first
-                      : 'PrepPilot Active Session',
-                  style: const TextStyle(color: Colors.black, fontSize: 12),
+
+                // Loading indicator
+                if (isLoading)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8.0,
+                      horizontal: 16.0,
+                    ),
+                    child: Row(
+                      children: [
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFF000000),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // Message Input Field
+                ChatInputBox(
+                  onTap: _sendMessage,
+                  longPress: onLongPressDown,
+                  longPressUp: onLongPressUp,
+                  messageController: messageController,
+                  focusNode: focusNode,
+                  buttonState: getButtonState(showMicOverlay),
                 ),
               ],
             ),
-          ),
-
-          body: Column(
-            children: [
-              // Message List
-              Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 8.0,
-                  ),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final message = messages[index];
-                    return _buildMessageBubble(message);
-                  },
-                ),
-              ),
-
-              // Loading indicator
-              if (isLoading)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8.0,
-                    horizontal: 16.0,
-                  ),
-                  child: Row(
-                    children: [
-                      const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF000000),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              // Message Input Field
-              ChatInputBox(
-                onTap: _sendMessage,
-                longPress: () {
-                  print("long press");
-                },
-              ),
-            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage message) {
-    final align = message.isUser
-        ? CrossAxisAlignment.end
-        : CrossAxisAlignment.start;
-    final bubbleColor = message.isUser
-        ? Colors.grey.shade50.withOpacity(0.8)
-        : Colors.transparent;
+  String getButtonState(bool isListening){
+    if (isListening) return 'listening';
+    if (messageController.text.isNotEmpty) return 'has_text';
+    return "idle";
+  }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
-      child: Column(
-        crossAxisAlignment: align,
-        children: [
-          Row(
-            mainAxisAlignment: message.isUser
-                ? MainAxisAlignment.end
-                : MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Flexible(
-                child: Container(
-                  constraints: BoxConstraints(
-                    maxWidth: message.isUser ? 240 : double.infinity,
-                  ),
-                  decoration: BoxDecoration(
-                    color: bubbleColor,
-                    borderRadius: BorderRadius.circular(20.0),
-                  ),
-                  padding: message.isUser
-                      ? const EdgeInsets.symmetric(
-                          vertical: 10.0,
-                          horizontal: 16.0,
-                        )
-                      : const EdgeInsets.symmetric(
-                          vertical: 8.0,
-                          horizontal: 4.0,
-                        ),
-                  child: MarkdownBody(
-                    data: message.text,
-                    styleSheet: MarkdownStyleSheet(
-                      p: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 16.0,
-                        height: 1.5,
-                      ),
-                      strong: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      em: const TextStyle(
-                        color: Colors.black,
-                        fontStyle: FontStyle.italic,
-                      ),
-                      code: const TextStyle(
-                        color: Colors.black,
-                        backgroundColor: Color(0xFF1E1E1E),
-                        fontFamily: 'monospace',
-                        fontSize: 14.0,
-                      ),
-                      codeblockDecoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      listBullet: const TextStyle(color: Colors.black),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+  Future<void> onLongPressDown() async{
+    context.read<ChatBloc>().add(StartAudioTranscription());
+  }
+  Future<void> onLongPressUp() async {
+    context.read<ChatBloc>().add(StopAudioTranscription());
   }
 }

@@ -14,7 +14,6 @@ class LimitDialogDismissed extends ChatEvent{
 
 class InitChatSession extends ChatEvent {
   final SubjectItem subject;
-
   const InitChatSession(this.subject);
 
   @override
@@ -41,4 +40,29 @@ class ClearChatHistory extends ChatEvent {
 
   @override
   List<Object?> get props => [subject];
+}
+
+class StartAudioTranscription extends ChatEvent {
+  const StartAudioTranscription();
+}
+
+class AudioTranscriptionReceived extends ChatEvent {
+  final String transcript;
+  const AudioTranscriptionReceived({required this.transcript});
+
+  @override
+  List<Object> get props => [transcript];
+}
+
+class MicScaleChanged extends ChatEvent {
+  final double micScale;
+  const MicScaleChanged({required this.micScale});
+
+  @override
+  List<Object> get props => [micScale];
+}
+
+
+class StopAudioTranscription extends ChatEvent {
+  const StopAudioTranscription();
 }

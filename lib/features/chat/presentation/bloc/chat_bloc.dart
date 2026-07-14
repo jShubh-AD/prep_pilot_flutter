@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile/core/errors/failures.dart';
+import 'package:mobile/core/services/deepgram_service.dart';
+import 'package:mobile/core/services/microphone_service.dart';
 import 'package:mobile/features/chat/domain/chat_usecase.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/repositories/chat_repository.dart';
@@ -9,6 +13,8 @@ import 'chat_state.dart';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final ChatUseCase chatUseCase;
+  StreamSubscription<String>? _transcriptSubscription;
+  StreamSubscription<double>? _amplitudeSubscription;
 
   ChatBloc({
     required this.chatUseCase,
@@ -16,28 +22,64 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<InitChatSession>(_onInitChatSession);
     on<SendChatMessage>(_onSendChatMessage);
     on<ClearChatHistory>(_onClearChatHistory);
-    on<LimitDialogDismissed>((event, emit) {
-      emit(state.copyWith(showLimitExceededDialog: false));
+    on<LimitDialogDismissed>(_dismissDailyLimitDialog);
+    on<StartAudioTranscription>(_onStartAudioTranscription);
+    on<AudioTranscriptionReceived>(_onAudioTranscriptionReceived);
+    on<MicScaleChanged>(_onMicScaleChanged);
+    on<StopAudioTranscription>(_onStopAudioTranscription);
+  }
+  Future<void> _onStartAudioTranscription(StartAudioTranscription event, emit) async{
+    emit(state.copyWith(showMicOverlay: true, transcription: "", micScale: 0, isAudio: false));
+    final dg = DeepgramService();
+    final ms = MicrophoneService();
+    Stream<Uint8List>? audioStream = ms.audioStream;
+
+    if (audioStream == null) await ms.startListeningMicrophone();
+
+    audioStream = ms.audioStream!;
+    await dg.startStreaming(audioStream);
+    await _transcriptSubscription?.cancel();
+    _transcriptSubscription = dg.transcriptStream.listen((transcript) {
+      add(AudioTranscriptionReceived(transcript: transcript));
+    });
+    await _amplitudeSubscription?.cancel();
+    _amplitudeSubscription = ms.amplitudeStream.listen((scale) {
+      add(MicScaleChanged(micScale: scale));
     });
   }
 
-  void _onInitChatSession(
-    InitChatSession event,
-    Emitter<ChatState> emit,
-  ) {
+  void _onAudioTranscriptionReceived(AudioTranscriptionReceived event, emit) {
+    emit(state.copyWith(transcription: event.transcript));
+  }
+
+  void _onMicScaleChanged(MicScaleChanged event, emit) {
+    emit(state.copyWith(micScale: event.micScale));
+  }
+
+  Future<void> _onStopAudioTranscription(StopAudioTranscription event, emit) async{
+    await _transcriptSubscription?.cancel();
+    await _amplitudeSubscription?.cancel();
+    _amplitudeSubscription = null;
+    _transcriptSubscription = null;
+    await MicrophoneService().stopListeningMicrophone();
+    await DeepgramService().stopStreaming();
+    emit(state.copyWith(showMicOverlay: false, isAudio: state.transcription.isNotEmpty));
+  }
+
+  void _dismissDailyLimitDialog (LimitDialogDismissed even, emit){
+    emit(state.copyWith(showLimitExceededDialog: false));
+  }
+
+  void _onInitChatSession(InitChatSession event, emit) {
     emit(ChatState.initial(
         'Ask me anything about ${event.subject.subjectName}!'));
   }
 
-  void _onClearChatHistory(
-    ClearChatHistory event,
-    Emitter<ChatState> emit,
-  ) {
-    emit(ChatState.initial(
-        'Ask me anything about ${event.subject.subjectName}!'));
+  void _onClearChatHistory(ClearChatHistory event, emit) {
+    emit(ChatState.initial('Ask me anything about ${event.subject.subjectName}!'));
   }
 
-  Future<void> _onSendChatMessage(SendChatMessage event, Emitter<ChatState> emit) async {
+  Future<void> _onSendChatMessage(SendChatMessage event, emit) async {
     final text = event.messageText;
     if (text.trim().isEmpty) return;
     final userMsg = ChatMessage(
@@ -97,7 +139,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         query: text,
         subjectId: event.subjectId,
         sessionId: sessionId,
-        format: "audio",
+        format: state.isAudio ? "audio" : "text",
       );
 
       await emit.forEach<ChatStreamEvent>(
@@ -146,6 +188,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
               tokenUsed: doneEvent.tokensUsed,
               tokenLeft: doneEvent.tokensAvailable,
               clearAudio: true,
+              isAudio: false,
               showLimitExceededDialog: false,
               sessionId: doneEvent.sessionId,
             );
@@ -167,6 +210,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
                 messages: currentMessages,
                 isLoading: false,
                 clearAudio: true,
+                isAudio: false,
                 showLimitExceededDialog: true,
               );
             }
@@ -187,6 +231,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
             return state.copyWith(
               messages: currentMessages,
+              isAudio: false,
               isLoading: false,
               clearAudio: true,
             );
@@ -201,9 +246,18 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       ));
       emit(state.copyWith(
         messages: currentMessages,
+        isAudio: false,
         isLoading: false,
         clearAudio: true,
       ));
     }
   }
+
+  @override
+  Future<void> close() async {
+    await _transcriptSubscription?.cancel();
+    await _amplitudeSubscription?.cancel();
+    return super.close();
+  }
+
 }

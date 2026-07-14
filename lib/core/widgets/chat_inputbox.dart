@@ -1,54 +1,40 @@
 import 'package:flutter/material.dart';
 
 class ChatInputBox extends StatefulWidget {
+  final TextEditingController messageController;
+  final FocusNode focusNode;
+  final String buttonState;
   final void Function(String) onTap;
   final void Function() longPress;
+  final void Function() longPressUp;
 
-  const ChatInputBox({super.key, required this.onTap, required this.longPress});
+  const ChatInputBox({
+    super.key,
+    required this.buttonState,
+    required this.onTap,
+    required this.longPress,
+    required this.longPressUp,
+    required this.messageController,
+    required this.focusNode
+  });
 
   @override
   State<ChatInputBox> createState() => _ChatInputBoxState();
 }
 
 class _ChatInputBoxState extends State<ChatInputBox> {
-  late final TextEditingController _messageController;
-  late final FocusNode _focusNode;
   bool _hasText = false;
 
   @override
   void initState() {
     super.initState();
-    _messageController = TextEditingController();
-    _focusNode = FocusNode();
-    _messageController.addListener(_onTextChanged);
+    widget.messageController.addListener(_handleTextChanged);
   }
 
-  void _onTextChanged() {
-    final hasText = _messageController.text.trim().isNotEmpty;
-    if (hasText != _hasText) {
-      setState(() {
-        _hasText = hasText;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _messageController.removeListener(_onTextChanged);
-    _messageController.dispose();
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  void _handleSend() {
-    final text = _messageController.text;
-    if (text.trim().isNotEmpty) {
-      widget.onTap(text);
-      _messageController.clear();
-      _focusNode.requestFocus();
-    } else {
-      widget.onTap("");
-    }
+  void _handleTextChanged() {
+    setState(() {
+      _hasText = widget.messageController.text.isNotEmpty;
+    });
   }
 
   @override
@@ -68,8 +54,8 @@ class _ChatInputBoxState extends State<ChatInputBox> {
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: TextField(
                   cursorColor: Colors.black,
-                  controller: _messageController,
-                  focusNode: _focusNode,
+                  controller: widget.messageController,
+                  focusNode: widget.focusNode,
                   maxLines: 10,
                   minLines: 1,
                   style: const TextStyle(
@@ -87,32 +73,30 @@ class _ChatInputBoxState extends State<ChatInputBox> {
                     contentPadding: EdgeInsets.symmetric(vertical: 12.0),
                   ),
                   textInputAction: TextInputAction.newline,
-                  onSubmitted: (_) => _handleSend(),
+                  onSubmitted: (c) => widget.onTap(c),
                 ),
               ),
             ),
             const SizedBox(width: 8.0),
             AnimatedContainer(
               duration: const Duration(milliseconds: 150),
-              width: 45,
-              height: 45,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: _hasText
-                    ? Colors.blueAccent
-                    : Colors.white,
+                color: getButtonColor(),
                 shape: BoxShape.circle,
               ),
               child: InkWell(
                 overlayColor: WidgetStatePropertyAll(Colors.transparent),
-                onLongPress: _hasText ? null :widget.longPress,
+                onLongPress: _hasText ? null : widget.longPress,
+                onLongPressUp: widget.longPressUp,
                 child: IconButton(
-                  icon: Icon(
-                    _hasText ? Icons.arrow_upward : Icons.mic,
-                    color: _hasText ? Colors.white : const Color(0xFF000000),
+                  icon: Icon(_hasText ? Icons.arrow_upward : Icons.mic,
+                    color: getIconColor(),
                     size: 20.0,
                   ),
                   onLongPress:widget.longPress,
-                  onPressed: _hasText ? _handleSend : null,
+                  onPressed: _hasText ? () => widget.onTap(widget.messageController.text) : null,
                 ),
               ),
             ),
@@ -121,4 +105,17 @@ class _ChatInputBoxState extends State<ChatInputBox> {
       ),
     );
   }
+
+  Color getButtonColor() => switch (widget.buttonState) {
+    'listening' => Colors.green,
+    'has_text' => Colors.blueAccent,
+    _ => Colors.white,
+  };
+
+  Color getIconColor() => switch (widget.buttonState) {
+    'listening' => Colors.white,
+    'has_text' => Colors.white,
+    _ => Colors.black,
+  };
+
 }

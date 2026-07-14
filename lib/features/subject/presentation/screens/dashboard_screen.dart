@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mobile/features/chat/domain/chat_repository.dart';
+import 'package:mobile/core/services/deepgram_service.dart';
 import 'package:mobile/features/chat/domain/chat_usecase.dart';
 import 'package:mobile/features/chat/presentation/bloc/chat_bloc.dart';
 import '../../../../core/widgets/subject_card.dart';
@@ -137,7 +137,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) => BlocProvider(
-                                  create: (context) => ChatBloc(chatUseCase: chatUseCase),
+                                  create: (context) =>
+                                      ChatBloc(chatUseCase: chatUseCase),
                                   child: ChatScreen(subject: subject),
                                 ),
                               ),

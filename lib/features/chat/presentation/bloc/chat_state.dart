@@ -11,6 +11,8 @@ class AudioChunkEvent extends Equatable {
   List<Object?> get props => [base64Audio, sequenceNumber];
 }
 
+
+
 class ChatState extends Equatable {
   final List<ChatMessage> messages;
   final bool isLoading;
@@ -20,10 +22,18 @@ class ChatState extends Equatable {
   final AudioChunkEvent? audioChunk;
   final String? sessionId;
   final bool showLimitExceededDialog;
+  final bool isAudio;
+  final bool showMicOverlay;
+  final double micScale;
+  final String transcription;
 
   const ChatState({
     required this.messages,
     required this.isLoading,
+    this.isAudio =false,
+    this.showMicOverlay = false,
+    this.micScale = 1.0,
+    this.transcription = "",
     this.tokenUsed,
     this.tokenLeft,
     this.error,
@@ -56,6 +66,10 @@ class ChatState extends Equatable {
     AudioChunkEvent? audioChunk,
     bool clearAudio = false,
     String? sessionId,
+    bool? showMicOverlay,
+    bool? isAudio,
+    double? micScale,
+    String? transcription
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -66,9 +80,25 @@ class ChatState extends Equatable {
       error: error ?? this.error,
       audioChunk: clearAudio ? null : (audioChunk ?? this.audioChunk),
       sessionId: sessionId ?? this.sessionId,
+      showMicOverlay: showMicOverlay ?? this.showMicOverlay,
+      isAudio: isAudio ?? this.isAudio,
+      micScale: micScale ?? this.micScale,
+      transcription: transcription ?? this.transcription,
     );
   }
 
   @override
-  List<Object?> get props => [messages, isLoading, error, audioChunk, sessionId];
+  List<Object?> get props => [
+        messages,
+        isLoading,
+        error,
+        tokenUsed,
+        tokenLeft,
+        audioChunk,
+        sessionId,
+        showLimitExceededDialog,
+        showMicOverlay,
+        transcription,
+        micScale
+      ];
 }
