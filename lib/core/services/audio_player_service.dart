@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_sound/flutter_sound.dart';
 import 'dart:typed_data';
 
@@ -7,6 +9,8 @@ class AudioPlayerService {
   factory AudioPlayerService() => instance;
 
   FlutterSoundPlayer? _player;
+
+  bool get isPlaying => _player?.isPlaying ?? false;
 
   Future<void> initAudioPlayer() async {
     if (_player != null) return;
@@ -30,7 +34,13 @@ class AudioPlayerService {
     );
   }
 
-  Future<void> playChunk(Int16List pcm) async {
+  Future<void> playChunk(String base64Audio) async {
+    final bytes = base64Decode(base64Audio);
+    final pcm = Int16List.view(
+      bytes.buffer,
+      bytes.offsetInBytes,
+      bytes.lengthInBytes ~/ 2,
+    );
     _player?.int16Sink?.add([pcm]);
   }
 

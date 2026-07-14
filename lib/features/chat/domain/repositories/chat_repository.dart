@@ -11,7 +11,6 @@ abstract class ChatStreamEvent extends Equatable {
 
 class ChatStreamToken extends ChatStreamEvent {
   final TokenEvent token;
-
   const ChatStreamToken(this.token);
 
   @override
@@ -20,7 +19,6 @@ class ChatStreamToken extends ChatStreamEvent {
 
 class ChatStreamDone extends ChatStreamEvent {
   final DoneEvent done;
-
   const ChatStreamDone(this.done);
 
   @override

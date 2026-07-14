@@ -6,6 +6,7 @@ import 'package:mobile/core/errors/failures.dart';
 import 'package:mobile/core/services/deepgram_service.dart';
 import 'package:mobile/core/services/microphone_service.dart';
 import 'package:mobile/features/chat/domain/chat_usecase.dart';
+import '../../../../core/services/audio_player_service.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/repositories/chat_repository.dart';
 import 'chat_event.dart';
@@ -28,10 +29,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<StopAudioTranscription>(_onStopAudioTranscription);
   }
 
-  Future<void> _onStartAudioTranscription(
-    StartAudioTranscription event,
-    emit,
-  ) async {
+  Future<void> _onStartAudioTranscription(StartAudioTranscription event, emit) async {
     emit(
       state.copyWith(
         showMicOverlay: true,
@@ -66,10 +64,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     emit(state.copyWith(micScale: event.micScale));
   }
 
-  Future<void> _onStopAudioTranscription(
-    StopAudioTranscription event,
-    emit,
-  ) async {
+  Future<void> _onStopAudioTranscription(StopAudioTranscription event, emit) async {
     emit(
       state.copyWith(
         showMicOverlay: false,
@@ -89,217 +84,139 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   void _onInitChatSession(InitChatSession event, emit) {
-    emit(
-      ChatState.initial('Ask me anything about ${event.subject.subjectName}!'),
-    );
+    AudioPlayerService().initAudioPlayer();
+    final initMsg = 'Ask me anything about ${event.subject.subjectName}!';
+    emit(ChatState.initial(initMsg));
   }
 
   void _onClearChatHistory(ClearChatHistory event, emit) {
-    emit(
-      ChatState.initial('Ask me anything about ${event.subject.subjectName}!'),
-    );
+    final initMsg = 'Ask me anything about ${event.subject.subjectName}!';
+    emit(ChatState.initial(initMsg));
   }
 
   Future<void> _onSendChatMessage(SendChatMessage event, emit) async {
-    final text = event.messageText;
-    if (text.trim().isEmpty) return;
+    final ap = AudioPlayerService();
+    final text = event.messageText.trim();
+    await ap.stopStream();
+
     final userMsg = ChatMessage(
       text: text,
       isUser: true,
       timestamp: DateTime.now(),
     );
 
-    final updatedMessagesWithUser = List<ChatMessage>.from(state.messages)
-      ..addAll([userMsg]);
-
-    emit(state.copyWith(messages: updatedMessagesWithUser, clearAudio: true));
-    if (state.tokenLeft != null && state.tokenLeft! <= 0) {
-      final currentMessages = List<ChatMessage>.from(state.messages);
-      currentMessages.add(
-        ChatMessage(
-          text:
-              '**Limit Exceeded**: You have exceeded your daily limit of 20,000 Tokens.\n*Tokens left: ${state.tokenLeft ?? 0}*',
-          isUser: false,
-          timestamp: DateTime.now(),
-        ),
-      );
-      emit(
-        state.copyWith(
-          messages: currentMessages,
-          showLimitExceededDialog: true,
-          isLoading: false,
-          clearAudio: true,
-        ),
-      );
-      return;
-    }
-
-    final botPlaceholder = ChatMessage(
-      text: "",
-      isUser: false,
-      timestamp: DateTime.now(),
-    );
-
-    final updateMessagesWithBotPlaceholder = List<ChatMessage>.from(
-      state.messages,
-    )..addAll([botPlaceholder]);
+    final messages = List<ChatMessage>.from(state.messages)
+      ..addAll([userMsg, ChatMessage(
+        text: "",
+        isUser: false,
+        timestamp: DateTime.now(),
+      )]);
 
     emit(
       state.copyWith(
-        messages: updateMessagesWithBotPlaceholder,
+        messages: messages,
         isLoading: true,
         error: null,
-        clearAudio: true,
-      ),
+      )
     );
-
-    int audioSeq = 0;
-
-    // Get session ID from state or load the latest session from local storage if null
-    String? sessionId = state.sessionId;
-    if (sessionId == null) {
-      try {
-        final lastSession = await chatUseCase.getLatestSession();
-        sessionId = lastSession?.sessionId;
-      } catch (e) {
-        print('Error getting latest session ID: $e');
-      }
-    }
+    final sessionId = await _getSessionId();
 
     try {
       final stream = chatUseCase.querySubject(
         query: text,
         subjectId: event.subjectId,
         sessionId: sessionId,
-        // format: state.isAudio ? "audio" : "text",
+        // format: state.isAudio ? "audio" : "text"
         format: "audio",
       );
 
-      await emit.forEach<ChatStreamEvent>(
-        stream,
-        onData: (eventData) {
-          if (eventData is ChatStreamToken) {
-            final token = eventData.token;
-            print("[TOKEN]: ${jsonEncode(token).toString()}");
-            final currentMessages = List<ChatMessage>.from(state.messages);
-            if (currentMessages.isNotEmpty) {
-              final lastMsg = currentMessages.last;
-              if (!lastMsg.isUser) {
-                final newText = lastMsg.text + (token.text ?? "");
-                currentMessages[currentMessages.length - 1] = lastMsg.copyWith(
-                  text: newText,
-                );
-              }
-            }
+      await for (final eventData in stream) {
+        if (eventData is ChatStreamToken) {
+          final token = eventData.token;
+          final updated = _appendAssistantText(token.text ?? "");
 
-            AudioChunkEvent? audioEvent;
-            if (token.audio != null) {
-              audioSeq++;
-              audioEvent = AudioChunkEvent(token.audio!, audioSeq);
-            }
+          if (token.audio != null) {
+            if (!ap.isPlaying) await ap.startStream();
+            await ap.playChunk(token.audio!);
+          }
 
-            return state.copyWith(
+          emit(
+            state.copyWith(
+              messages: updated,
               showLimitExceededDialog: false,
-              messages: currentMessages,
-              audioChunk: audioEvent,
-              clearAudio: false,
-            );
-          }
-          if (eventData is ChatStreamDone) {
-            final doneEvent = eventData.done;
-            chatUseCase
-                .saveSessionInfo(
-                  sessionId: doneEvent.sessionId,
-                  tokensUsed: doneEvent.tokensUsed,
-                  tokensAvailable: doneEvent.tokensAvailable,
-                  totalTime: doneEvent.totalTime,
-                )
-                .then((_) {
-                  print(
-                    'Session info saved successfully for session: ${doneEvent.sessionId}',
-                  );
-                })
-                .catchError((error) {
-                  print('Error saving session info: $error');
-                });
-            print("[DONE]: ${jsonEncode(doneEvent).toString()}");
-            return state.copyWith(
-              isLoading: false,
-              tokenUsed: doneEvent.tokensUsed,
-              tokenLeft: doneEvent.tokensAvailable,
-              clearAudio: true,
-              isAudio: false,
-              showLimitExceededDialog: false,
-              sessionId: doneEvent.sessionId,
-            );
-          }
-          return state;
-        },
-
-        onError: (error, stackTrace) {
-          if (error is ExceededFreeLimit) {
-            final currentMessages = List<ChatMessage>.from(state.messages);
-            currentMessages.add(
-              ChatMessage(
-                text: '**Error:** ${error.message}',
-                isUser: false,
-                timestamp: DateTime.now(),
-              ),
-            );
-            return state.copyWith(
-              messages: currentMessages,
-              isLoading: false,
-              clearAudio: true,
-              isAudio: false,
-              showLimitExceededDialog: true,
-            );
-          }
-
-          final message = switch (error) {
-            ServerFailure e => e.message,
-            _ => error.toString(),
-          };
-
-          final currentMessages = List<ChatMessage>.from(state.messages);
-          currentMessages.add(
-            ChatMessage(
-              text: '**Error:** $message',
-              isUser: false,
-              timestamp: DateTime.now(),
             ),
           );
+          continue;
+        }
 
-          return state.copyWith(
-            messages: currentMessages,
-            isAudio: false,
-            isLoading: false,
-            clearAudio: true,
+        if (eventData is ChatStreamDone) {
+          final done = eventData.done;
+
+          await chatUseCase.saveSessionInfo(
+            sessionId: done.sessionId,
+            tokensUsed: done.tokensUsed,
+            tokensAvailable: done.tokensAvailable,
+            totalTime: done.totalTime,
           );
-        },
-      );
+
+          emit(
+            state.copyWith(
+              isLoading: false,
+              tokenUsed: done.tokensUsed,
+              tokenLeft: done.tokensAvailable,
+              sessionId: done.sessionId,
+              showLimitExceededDialog: false,
+            ),
+          );
+        }
+      }
+    } on ExceededFreeLimit catch (e) {
+      _emitError(emit, e.message, showLimitDialog: true);
+    } on ServerFailure catch (e) {
+      _emitError(emit, e.message);
     } catch (e) {
-      final errorMsg = e.toString();
-      final currentMessages = List<ChatMessage>.from(state.messages);
-      currentMessages.add(
+      _emitError(emit, e.toString());
+    } finally {
+      if (ap.isPlaying) await ap.stopStream();
+    }
+  }
+
+  List<ChatMessage> _appendAssistantText(String text) {
+    final updated = List<ChatMessage>.from(state.messages);
+
+    if (updated.isNotEmpty && !updated.last.isUser) {
+      updated[updated.length - 1] = updated.last.copyWith(
+        text: updated.last.text + text,
+      );
+    }
+    return updated;
+  }
+
+  Future<String?> _getSessionId() async {
+    return state.sessionId ?? (await chatUseCase.getLatestSession())?.sessionId;
+  }
+
+  void _emitError(Emitter<ChatState> emit, String message, {bool showLimitDialog = false}) {
+    final updated = List<ChatMessage>.from(state.messages)
+      ..add(
         ChatMessage(
-          text: '**Error:** $errorMsg',
+          text: "**Error:** $message",
           isUser: false,
           timestamp: DateTime.now(),
         ),
       );
-      emit(
-        state.copyWith(
-          messages: currentMessages,
-          isAudio: false,
-          isLoading: false,
-          clearAudio: true,
-        ),
-      );
-    }
+    emit(
+      state.copyWith(
+        messages: updated,
+        isLoading: false,
+        showLimitExceededDialog: showLimitDialog,
+      ),
+    );
   }
 
   @override
   Future<void> close() async {
+    await AudioPlayerService().dispose();
     await _transcriptSubscription?.cancel();
     await _amplitudeSubscription?.cancel();
     return super.close();
