@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_portal/flutter_portal.dart';
@@ -8,7 +6,6 @@ import 'package:mobile/core/widgets/chat_inputbox.dart';
 import 'package:mobile/features/chat/presentation/widgets/chat_message.dart';
 import 'package:mobile/features/chat/presentation/widgets/limit_dialog.dart';
 import 'package:mobile/features/chat/presentation/widgets/listening_overlay.dart';
-import '../../../../core/services/audio_player_service.dart';
 import '../../../subject/domain/entities/subject_item.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
@@ -28,7 +25,6 @@ class _ChatScreenState extends State<ChatScreen> {
   final FocusNode focusNode = FocusNode();
 
   final ScrollController _scrollController = ScrollController();
-  int _lastPlayedSeq = 0;
 
   @override
   void initState() {
@@ -89,28 +85,10 @@ class _ChatScreenState extends State<ChatScreen> {
             messageController.text = state.transcription;
           }
         }
-
         if(state.showLimitExceededDialog){
           showFreeLimitDialog(context, usedTokens: 20000, refreshAt: _nextMidnight());
         }
-
         _scrollToBottom();
-
-        // Listen for new audio chunks to play
-        if (state.audioChunk != null &&
-            state.audioChunk!.sequenceNumber > _lastPlayedSeq) {
-          _lastPlayedSeq = state.audioChunk!.sequenceNumber;
-          try {
-            final bytes = base64Decode(state.audioChunk!.base64Audio);
-            final pcm = Int16List.view(
-              bytes.buffer,
-              bytes.offsetInBytes,
-              bytes.lengthInBytes ~/ 2,
-            );
-          } catch (e) {
-            print("Error playing audio chunk: $e");
-          }
-        }
       },
       builder: (context, state) {
         final messages = state.messages;
@@ -141,7 +119,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   Text(
                     widget.subject.subjectCodes?.isNotEmpty == true
                         ? widget.subject.subjectCodes!.first
-                        : 'PrepPilot Active Session',
+                        : 'MasterJI is teaching (pay attention)',
                     style: const TextStyle(color: Colors.black, fontSize: 12),
                   ),
                 ],
@@ -168,10 +146,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 // Loading indicator
                 if (isLoading)
                   Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8.0,
-                      horizontal: 16.0,
-                    ),
+                    padding: const EdgeInsets.only(left: 16),
                     child: Row(
                       children: [
                         const SizedBox(
@@ -190,9 +165,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 // Message Input Field
                 ChatInputBox(
-                  onTap: _sendMessage,
-                  longPress: onLongPressDown,
-                  longPressUp: onLongPressUp,
+                  onTap: state.isLoading ? null : _sendMessage,
+                  longPress: state.isLoading ? null :  onLongPressDown,
+                  longPressUp: state.isLoading ? null :  onLongPressUp,
                   messageController: messageController,
                   focusNode: focusNode,
                   buttonState: getButtonState(showMicOverlay),

@@ -126,8 +126,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         query: text,
         subjectId: event.subjectId,
         sessionId: sessionId,
-        // format: state.isAudio ? "audio" : "text"
-        format: "audio",
+        format: state.isAudio ? "audio" : "text"
       );
 
       await for (final eventData in stream) {

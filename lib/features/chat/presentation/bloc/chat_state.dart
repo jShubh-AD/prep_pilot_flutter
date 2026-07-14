@@ -1,18 +1,5 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/chat_message.dart';
-
-class AudioChunkEvent extends Equatable {
-  final String base64Audio;
-  final int sequenceNumber;
-
-  const AudioChunkEvent(this.base64Audio, this.sequenceNumber);
-
-  @override
-  List<Object?> get props => [base64Audio, sequenceNumber];
-}
-
-
-
 class ChatState extends Equatable {
   final List<ChatMessage> messages;
   final bool isLoading;
@@ -20,7 +7,7 @@ class ChatState extends Equatable {
   final int? tokenUsed;
   final int? tokenLeft;
   final bool clearAudio;
-  final AudioChunkEvent? audioChunk;
+  final String? audioChunk;
   final String? sessionId;
   final bool showLimitExceededDialog;
   final bool isAudio;
@@ -65,7 +52,7 @@ class ChatState extends Equatable {
     bool? isLoading,
     bool? showLimitExceededDialog,
     String? error,
-    AudioChunkEvent? audioChunk,
+    String? audioChunk,
     bool clearAudio = false,
     String? sessionId,
     bool? showMicOverlay,

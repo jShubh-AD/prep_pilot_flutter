@@ -15,7 +15,7 @@ class MicOverlay extends StatelessWidget {
     final color = Theme.of(context).primaryColor;
 
     return Material(
-      color: Colors.black45,
+      color: Colors.black12,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,

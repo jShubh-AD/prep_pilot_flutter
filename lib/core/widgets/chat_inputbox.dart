@@ -4,9 +4,9 @@ class ChatInputBox extends StatefulWidget {
   final TextEditingController messageController;
   final FocusNode focusNode;
   final String buttonState;
-  final void Function(String) onTap;
-  final void Function() longPress;
-  final void Function() longPressUp;
+  final void Function(String)? onTap;
+  final void Function()? longPress;
+  final void Function()? longPressUp;
 
   const ChatInputBox({
     super.key,
@@ -41,62 +41,60 @@ class _ChatInputBoxState extends State<ChatInputBox> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFFFF),
-                  borderRadius: BorderRadius.circular(100),
+              child: TextField(
+                cursorColor: Colors.black,
+                controller: widget.messageController,
+                focusNode: widget.focusNode,
+                maxLines: 5,
+                minLines: 1,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 16.0,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: TextField(
-                  cursorColor: Colors.black,
-                  controller: widget.messageController,
-                  focusNode: widget.focusNode,
-                  maxLines: 10,
-                  minLines: 1,
-                  style: const TextStyle(
-                    color: Colors.black,
+                decoration: const InputDecoration(
+                  hintText: 'Ask from MasterJI...',
+                  hintStyle: TextStyle(
+                    color: Color(0xFF9B9B9B),
                     fontSize: 16.0,
                   ),
-                  decoration: const InputDecoration(
-                    hintText: 'Message PrepPilot...',
-                    hintStyle: TextStyle(
-                      color: Color(0xFF9B9B9B),
-                      fontSize: 16.0,
-                    ),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 12.0),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(50)),
+                    borderSide: BorderSide.none
                   ),
-                  textInputAction: TextInputAction.newline,
-                  onSubmitted: (c) => widget.onTap(c),
+                  filled: true,
+                  fillColor: Color(0xFFFFFFFF),
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 20.0),
                 ),
+                textInputAction: TextInputAction.newline,
+                onSubmitted: (c) => widget.onTap?.call(c),
               ),
             ),
             const SizedBox(width: 8.0),
             AnimatedContainer(
               duration: const Duration(milliseconds: 150),
-              width: 48,
-              height: 48,
+              width: buttonSize(),
+              height: buttonSize(),
               decoration: BoxDecoration(
-                color: getButtonColor(),
-                shape: BoxShape.circle,
+                  color: getButtonColor(),
+                  shape: BoxShape.circle
               ),
               child: InkWell(
                 overlayColor: WidgetStatePropertyAll(Colors.transparent),
-                onLongPress: _hasText ? null : widget.longPress,
-                onLongPressUp: widget.longPressUp,
+                onLongPress: _hasText ? null : () => widget.longPress?.call(),
+                onLongPressUp: _hasText ? null : () => widget.longPressUp?.call(),
                 child: IconButton(
-                  icon: Icon(_hasText ? Icons.arrow_upward : Icons.mic,
+                  onPressed: _hasText ? () => widget.onTap?.call(widget.messageController.text) : null,
+                  icon: Icon(
+                    _hasText ? Icons.arrow_upward : Icons.mic,
                     color: getIconColor(),
-                    size: 20.0,
+                    size: iconSize(),
                   ),
-                  onLongPress:widget.longPress,
-                  onPressed: _hasText ? () => widget.onTap(widget.messageController.text) : null,
                 ),
               ),
             ),
@@ -105,6 +103,9 @@ class _ChatInputBoxState extends State<ChatInputBox> {
       ),
     );
   }
+
+  double iconSize() => widget.buttonState == "listening" ? 40.0 : 20.0;
+  double buttonSize() => widget.buttonState == "listening" ? 68.0 : 48.0;
 
   Color getButtonColor() => switch (widget.buttonState) {
     'listening' => Colors.green,

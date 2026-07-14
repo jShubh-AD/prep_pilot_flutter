@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Portal(
       child: MaterialApp(
-        title: 'PrepPilot Mobile',
+        title: 'MasterJI',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           brightness: Brightness.light,

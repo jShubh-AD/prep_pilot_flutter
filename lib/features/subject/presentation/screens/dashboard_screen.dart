@@ -53,7 +53,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               expandedHeight: 70,
               backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               title: const Text(
-                'PrepPilot',
+                'MasterJI',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w700,
