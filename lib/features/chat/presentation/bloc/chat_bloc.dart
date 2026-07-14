@@ -16,9 +16,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   StreamSubscription<String>? _transcriptSubscription;
   StreamSubscription<double>? _amplitudeSubscription;
 
-  ChatBloc({
-    required this.chatUseCase,
-  }) : super(const ChatState(messages: [], isLoading: false)) {
+  ChatBloc({required this.chatUseCase})
+    : super(const ChatState(messages: [], isLoading: false)) {
     on<InitChatSession>(_onInitChatSession);
     on<SendChatMessage>(_onSendChatMessage);
     on<ClearChatHistory>(_onClearChatHistory);
@@ -28,12 +27,23 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<MicScaleChanged>(_onMicScaleChanged);
     on<StopAudioTranscription>(_onStopAudioTranscription);
   }
-  Future<void> _onStartAudioTranscription(StartAudioTranscription event, emit) async{
-    emit(state.copyWith(showMicOverlay: true, transcription: "", micScale: 0, isAudio: false));
+
+  Future<void> _onStartAudioTranscription(
+    StartAudioTranscription event,
+    emit,
+  ) async {
+    emit(
+      state.copyWith(
+        showMicOverlay: true,
+        transcription: "",
+        micScale: 0,
+        isAudio: false,
+      ),
+    );
     final dg = DeepgramService();
+    await dg.connect();
     final ms = MicrophoneService();
     Stream<Uint8List>? audioStream = ms.audioStream;
-
     if (audioStream == null) await ms.startListeningMicrophone();
 
     audioStream = ms.audioStream!;
@@ -56,73 +66,95 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     emit(state.copyWith(micScale: event.micScale));
   }
 
-  Future<void> _onStopAudioTranscription(StopAudioTranscription event, emit) async{
+  Future<void> _onStopAudioTranscription(
+    StopAudioTranscription event,
+    emit,
+  ) async {
+    emit(
+      state.copyWith(
+        showMicOverlay: false,
+        isAudio: state.transcription.isNotEmpty,
+      ),
+    );
     await _transcriptSubscription?.cancel();
     await _amplitudeSubscription?.cancel();
     _amplitudeSubscription = null;
     _transcriptSubscription = null;
     await MicrophoneService().stopListeningMicrophone();
     await DeepgramService().stopStreaming();
-    emit(state.copyWith(showMicOverlay: false, isAudio: state.transcription.isNotEmpty));
   }
 
-  void _dismissDailyLimitDialog (LimitDialogDismissed even, emit){
+  void _dismissDailyLimitDialog(LimitDialogDismissed even, emit) {
     emit(state.copyWith(showLimitExceededDialog: false));
   }
 
   void _onInitChatSession(InitChatSession event, emit) {
-    emit(ChatState.initial(
-        'Ask me anything about ${event.subject.subjectName}!'));
+    emit(
+      ChatState.initial('Ask me anything about ${event.subject.subjectName}!'),
+    );
   }
 
   void _onClearChatHistory(ClearChatHistory event, emit) {
-    emit(ChatState.initial('Ask me anything about ${event.subject.subjectName}!'));
+    emit(
+      ChatState.initial('Ask me anything about ${event.subject.subjectName}!'),
+    );
   }
 
   Future<void> _onSendChatMessage(SendChatMessage event, emit) async {
     final text = event.messageText;
     if (text.trim().isEmpty) return;
     final userMsg = ChatMessage(
-        text: text, isUser: true, timestamp: DateTime.now());
+      text: text,
+      isUser: true,
+      timestamp: DateTime.now(),
+    );
 
     final updatedMessagesWithUser = List<ChatMessage>.from(state.messages)
       ..addAll([userMsg]);
 
-    emit(state.copyWith(
-      messages: updatedMessagesWithUser,
-      clearAudio: true,
-    ));
+    emit(state.copyWith(messages: updatedMessagesWithUser, clearAudio: true));
     if (state.tokenLeft != null && state.tokenLeft! <= 0) {
       final currentMessages = List<ChatMessage>.from(state.messages);
-      currentMessages.add(ChatMessage(
-        text: '**Limit Exceeded**: You have exceeded your daily limit of 20,000 Tokens.\n*Tokens left: ${state.tokenLeft ?? 0}*',
-        isUser: false,
-        timestamp: DateTime.now(),
-      ));
-      emit(state.copyWith(
-        messages: currentMessages,
-        showLimitExceededDialog: true,
-        isLoading: false,
-        clearAudio: true,
-      ));
+      currentMessages.add(
+        ChatMessage(
+          text:
+              '**Limit Exceeded**: You have exceeded your daily limit of 20,000 Tokens.\n*Tokens left: ${state.tokenLeft ?? 0}*',
+          isUser: false,
+          timestamp: DateTime.now(),
+        ),
+      );
+      emit(
+        state.copyWith(
+          messages: currentMessages,
+          showLimitExceededDialog: true,
+          isLoading: false,
+          clearAudio: true,
+        ),
+      );
       return;
     }
 
     final botPlaceholder = ChatMessage(
-        text: "", isUser: false, timestamp: DateTime.now());
+      text: "",
+      isUser: false,
+      timestamp: DateTime.now(),
+    );
 
-    final updateMessagesWithBotPlaceholder = List<ChatMessage>.from(state.messages)
-      ..addAll([botPlaceholder]);
+    final updateMessagesWithBotPlaceholder = List<ChatMessage>.from(
+      state.messages,
+    )..addAll([botPlaceholder]);
 
-    emit(state.copyWith(
-      messages: updateMessagesWithBotPlaceholder,
-      isLoading: true,
-      error: null,
-      clearAudio: true,
-    ));
+    emit(
+      state.copyWith(
+        messages: updateMessagesWithBotPlaceholder,
+        isLoading: true,
+        error: null,
+        clearAudio: true,
+      ),
+    );
 
     int audioSeq = 0;
-    
+
     // Get session ID from state or load the latest session from local storage if null
     String? sessionId = state.sessionId;
     if (sessionId == null) {
@@ -139,7 +171,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         query: text,
         subjectId: event.subjectId,
         sessionId: sessionId,
-        format: state.isAudio ? "audio" : "text",
+        // format: state.isAudio ? "audio" : "text",
+        format: "audio",
       );
 
       await emit.forEach<ChatStreamEvent>(
@@ -153,8 +186,9 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
               final lastMsg = currentMessages.last;
               if (!lastMsg.isUser) {
                 final newText = lastMsg.text + (token.text ?? "");
-                currentMessages[currentMessages.length - 1] =
-                    lastMsg.copyWith(text: newText);
+                currentMessages[currentMessages.length - 1] = lastMsg.copyWith(
+                  text: newText,
+                );
               }
             }
 
@@ -168,20 +202,26 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
               showLimitExceededDialog: false,
               messages: currentMessages,
               audioChunk: audioEvent,
-              clearAudio: audioEvent == null,
+              clearAudio: false,
             );
-          } else if (eventData is ChatStreamDone) {
+          }
+          if (eventData is ChatStreamDone) {
             final doneEvent = eventData.done;
-            chatUseCase.saveSessionInfo(
-              sessionId: doneEvent.sessionId,
-              tokensUsed: doneEvent.tokensUsed,
-              tokensAvailable: doneEvent.tokensAvailable,
-              totalTime: doneEvent.totalTime,
-            ).then((_) {
-              print('Session info saved successfully for session: ${doneEvent.sessionId}');
-            }).catchError((error) {
-              print('Error saving session info: $error');
-            });
+            chatUseCase
+                .saveSessionInfo(
+                  sessionId: doneEvent.sessionId,
+                  tokensUsed: doneEvent.tokensUsed,
+                  tokensAvailable: doneEvent.tokensAvailable,
+                  totalTime: doneEvent.totalTime,
+                )
+                .then((_) {
+                  print(
+                    'Session info saved successfully for session: ${doneEvent.sessionId}',
+                  );
+                })
+                .catchError((error) {
+                  print('Error saving session info: $error');
+                });
             print("[DONE]: ${jsonEncode(doneEvent).toString()}");
             return state.copyWith(
               isLoading: false,
@@ -196,60 +236,65 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           return state;
         },
 
-          onError: (error, stackTrace) {
-            if (error is ExceededFreeLimit){
-              final currentMessages = List<ChatMessage>.from(state.messages);
-              currentMessages.add(
-                ChatMessage(
-                  text: '**Error:** ${error.message}',
-                  isUser: false,
-                  timestamp: DateTime.now(),
-                ),
-              );
-              return state.copyWith(
-                messages: currentMessages,
-                isLoading: false,
-                clearAudio: true,
-                isAudio: false,
-                showLimitExceededDialog: true,
-              );
-            }
-
-            final message = switch (error) {
-              ServerFailure e => e.message,
-              _ => error.toString(),
-            };
-
+        onError: (error, stackTrace) {
+          if (error is ExceededFreeLimit) {
             final currentMessages = List<ChatMessage>.from(state.messages);
             currentMessages.add(
               ChatMessage(
-                text: '**Error:** $message',
+                text: '**Error:** ${error.message}',
                 isUser: false,
                 timestamp: DateTime.now(),
               ),
             );
-
             return state.copyWith(
               messages: currentMessages,
-              isAudio: false,
               isLoading: false,
               clearAudio: true,
+              isAudio: false,
+              showLimitExceededDialog: true,
             );
-        });
+          }
+
+          final message = switch (error) {
+            ServerFailure e => e.message,
+            _ => error.toString(),
+          };
+
+          final currentMessages = List<ChatMessage>.from(state.messages);
+          currentMessages.add(
+            ChatMessage(
+              text: '**Error:** $message',
+              isUser: false,
+              timestamp: DateTime.now(),
+            ),
+          );
+
+          return state.copyWith(
+            messages: currentMessages,
+            isAudio: false,
+            isLoading: false,
+            clearAudio: true,
+          );
+        },
+      );
     } catch (e) {
       final errorMsg = e.toString();
       final currentMessages = List<ChatMessage>.from(state.messages);
-      currentMessages.add(ChatMessage(
-        text: '**Error:** $errorMsg',
-        isUser: false,
-        timestamp: DateTime.now(),
-      ));
-      emit(state.copyWith(
-        messages: currentMessages,
-        isAudio: false,
-        isLoading: false,
-        clearAudio: true,
-      ));
+      currentMessages.add(
+        ChatMessage(
+          text: '**Error:** $errorMsg',
+          isUser: false,
+          timestamp: DateTime.now(),
+        ),
+      );
+      emit(
+        state.copyWith(
+          messages: currentMessages,
+          isAudio: false,
+          isLoading: false,
+          clearAudio: true,
+        ),
+      );
     }
   }
 
@@ -259,5 +304,4 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     await _amplitudeSubscription?.cancel();
     return super.close();
   }
-
 }

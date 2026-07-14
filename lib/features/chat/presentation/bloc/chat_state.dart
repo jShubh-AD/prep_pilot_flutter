@@ -19,6 +19,7 @@ class ChatState extends Equatable {
   final String? error;
   final int? tokenUsed;
   final int? tokenLeft;
+  final bool clearAudio;
   final AudioChunkEvent? audioChunk;
   final String? sessionId;
   final bool showLimitExceededDialog;
@@ -30,6 +31,7 @@ class ChatState extends Equatable {
   const ChatState({
     required this.messages,
     required this.isLoading,
+    this.clearAudio = true,
     this.isAudio =false,
     this.showMicOverlay = false,
     this.micScale = 1.0,
@@ -93,6 +95,7 @@ class ChatState extends Equatable {
         isLoading,
         error,
         tokenUsed,
+        clearAudio,
         tokenLeft,
         audioChunk,
         sessionId,

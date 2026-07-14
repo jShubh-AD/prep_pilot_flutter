@@ -27,15 +27,12 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController messageController = TextEditingController();
   final FocusNode focusNode = FocusNode();
 
-  late final FlutterSoundPlayer _player;
-
   final ScrollController _scrollController = ScrollController();
   int _lastPlayedSeq = 0;
 
   @override
   void initState() {
     super.initState();
-    _initPlayer();
     focusNode.requestFocus();
     context.read<ChatBloc>().add(InitChatSession(widget.subject));
     messageController.addListener(_messageControllerListener);
@@ -45,24 +42,11 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {});
   }
 
-  Future<void> _initPlayer() async {
-    _player = FlutterSoundPlayer();
-    await _player.openPlayer();
-    await _player.startPlayerFromStream(
-      codec: Codec.pcm16,
-      sampleRate: 24000,
-      numChannels: 1,
-      interleaved: false,
-      bufferSize: 8192,
-    );
-  }
-
   @override
   void dispose() {
     messageController.dispose();
     focusNode.dispose();
     _scrollController.dispose();
-    _player.closePlayer();
     super.dispose();
   }
 
@@ -123,7 +107,6 @@ class _ChatScreenState extends State<ChatScreen> {
               bytes.offsetInBytes,
               bytes.lengthInBytes ~/ 2,
             );
-            _player.int16Sink?.add([pcm]);
           } catch (e) {
             print("Error playing audio chunk: $e");
           }

@@ -37,13 +37,30 @@ class DeepgramService {
     );
     final headers = {"Authorization": "Token ${ApiConstants.deepgramKey}"};
     _socket = IOWebSocketChannel.connect(uri, headers: headers);
+    String _finalTranscript = "";
+    String _interimTranscript = "";
 
     _socketSubscription = _socket!.stream.listen(
           (message) {
         final json = jsonDecode(message);
+        final isFinal = json["is_final"] ?? false;
         final transcript = json["channel"]?["alternatives"]?[0]?["transcript"];
+        if (transcript.isEmpty) return;
         log(transcript, name: 'DG Transcript');
-        if (transcript is String && transcript.isNotEmpty) _transcriptController.add(transcript);
+        if (isFinal) {
+          _finalTranscript = _finalTranscript.isEmpty
+              ? transcript
+              : "$_finalTranscript $transcript";
+          _interimTranscript = "";
+        } else {
+          _interimTranscript = transcript;
+        }
+        final display = _interimTranscript.isEmpty
+            ? _finalTranscript
+            : "${_finalTranscript.isEmpty ? "" : "$_finalTranscript "}"
+            "$_interimTranscript";
+
+        if (transcript is String) _transcriptController.add(display);
       },
       onError: (error) {
         print("ERROR:$error");
@@ -89,10 +106,14 @@ class DeepgramService {
 
   Future<void> disconnect() async {
     await stopStreaming();
-    await _transcriptController.close();
     await _socketSubscription?.cancel();
     _socketSubscription = null;
     await _socket?.sink.close();
     _socket = null;
+  }
+
+  Future<void> dispose() async {
+    await disconnect();
+    await _transcriptController.close();
   }
 }
