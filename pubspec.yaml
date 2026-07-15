@@ -47,6 +47,7 @@ dependencies:
   web_socket_channel: ^3.0.3
   record: ^6.2.1
   flutter_launcher_icons: ^0.14.4
+  google_fonts: ^6.2.0
 
 dev_dependencies:
   flutter_test:

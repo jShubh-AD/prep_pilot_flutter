@@ -162,6 +162,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           emit(
             state.copyWith(
               isLoading: false,
+              isAudio: false,
               tokenUsed: done.tokensUsed,
               tokenLeft: done.tokensAvailable,
               sessionId: done.sessionId,
@@ -208,6 +209,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     emit(
       state.copyWith(
         messages: updated,
+        isAudio: false,
         isLoading: false,
         transcription: "",
         showLimitExceededDialog: showLimitDialog,

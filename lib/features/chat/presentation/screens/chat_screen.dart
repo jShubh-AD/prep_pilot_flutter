@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_portal/flutter_portal.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/widgets/chat_inputbox.dart';
 import 'package:mobile/features/chat/presentation/widgets/chat_message.dart';
 import 'package:mobile/features/chat/presentation/widgets/limit_dialog.dart';
@@ -100,27 +102,41 @@ class _ChatScreenState extends State<ChatScreen> {
           anchor: const Aligned(follower: Alignment.center,target: Alignment.center),
           portalFollower: MicOverlay(scale: micScale, transcription: transcription),
           child: Scaffold(
+            backgroundColor: const Color(0xFFF8FAFC),
             appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              surfaceTintColor: Colors.transparent,
+              backgroundColor: const Color(0xFFF8FAFC),
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     widget.subject.subjectName.toString(),
-                    style: const TextStyle(
-                      color: Colors.black,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: const Color(0xFF0F172A),
                       fontSize: 18.0,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   Text(
                     widget.subject.subjectCodes?.isNotEmpty == true
                         ? widget.subject.subjectCodes!.first
                         : 'MasterJI is teaching (pay attention)',
-                    style: const TextStyle(color: Colors.black, fontSize: 12),
+                    style: GoogleFonts.plusJakartaSans(
+                      color: const Color(0xFF64748B),
+                      fontSize: 11.0,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
+              ),
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(1.0),
+                child: Container(
+                  color: const Color(0xFFE2E8F0),
+                  height: 1.0,
+                ),
               ),
             ),
             body: Column(
@@ -129,9 +145,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: ListView.builder(
                     controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 8.0,
+                    padding: const EdgeInsets.only(
+                      left: 16.0,
+                      right: 16.0,
+                      top: 16.0,
+                      bottom: 24.0,
                     ),
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
@@ -143,21 +161,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 // Loading indicator
                 if (isLoading)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16),
-                    child: Row(
-                      children: [
-                        const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Color(0xFF000000),
-                            ),
-                          ),
-                        ),
-                      ],
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: EdgeInsets.only(left: 16.0, bottom: 12.0, top: 4.0),
+                      child: ThreeDotThinkingIndicator(),
                     ),
                   ),
 
@@ -196,5 +204,84 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> onLongPressUp() async {
     print("longpressup called");
     context.read<ChatBloc>().add(StopAudioTranscription());
+  }
+}
+
+class ThreeDotThinkingIndicator extends StatefulWidget {
+  const ThreeDotThinkingIndicator({super.key});
+
+  @override
+  State<ThreeDotThinkingIndicator> createState() => _ThreeDotThinkingIndicatorState();
+}
+
+class _ThreeDotThinkingIndicatorState extends State<ThreeDotThinkingIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+          bottomLeft: Radius.circular(4),
+          bottomRight: Radius.circular(16),
+        ),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(3, (index) {
+          return AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              final double delay = index * 0.2;
+              final double value = (_controller.value - delay).clamp(0.0, 1.0);
+              // Staggered sine bounce
+              final double bounce = math.sin(value * 2 * math.pi) * -4.0;
+              // Staggered opacity
+              final double progress = math.sin(_controller.value * math.pi * 2 - (index * 1.0));
+              final double opacity = (0.3 + (progress + 1.0) * 0.35).clamp(0.3, 1.0);
+
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 3.0),
+                transform: Matrix4.translationValues(0, bounce.clamp(-4.0, 0.0), 0),
+                width: 6.0,
+                height: 6.0,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF3B82F6).withOpacity(opacity),
+                ),
+              );
+            },
+          );
+        }),
+      ),
+    );
   }
 }
