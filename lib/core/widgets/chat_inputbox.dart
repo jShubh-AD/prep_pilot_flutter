@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-class ChatInputBox extends StatefulWidget {
+class ChatInputBox extends StatelessWidget {
   final TextEditingController messageController;
   final FocusNode focusNode;
   final String buttonState;
+  final bool hasText;
   final void Function(String)? onTap;
   final void Function()? longPress;
   final void Function()? longPressUp;
 
   const ChatInputBox({
     super.key,
+    required this.hasText,
     required this.buttonState,
     required this.onTap,
     required this.longPress,
@@ -17,25 +20,6 @@ class ChatInputBox extends StatefulWidget {
     required this.messageController,
     required this.focusNode
   });
-
-  @override
-  State<ChatInputBox> createState() => _ChatInputBoxState();
-}
-
-class _ChatInputBoxState extends State<ChatInputBox> {
-  bool _hasText = false;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.messageController.addListener(_handleTextChanged);
-  }
-
-  void _handleTextChanged() {
-    setState(() {
-      _hasText = widget.messageController.text.isNotEmpty;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,8 +32,8 @@ class _ChatInputBoxState extends State<ChatInputBox> {
             Expanded(
               child: TextField(
                 cursorColor: Colors.black,
-                controller: widget.messageController,
-                focusNode: widget.focusNode,
+                controller: messageController,
+                focusNode: focusNode,
                 maxLines: 5,
                 minLines: 1,
                 style: const TextStyle(
@@ -72,51 +56,54 @@ class _ChatInputBoxState extends State<ChatInputBox> {
                   contentPadding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 20.0),
                 ),
                 textInputAction: TextInputAction.newline,
-                onSubmitted: (c) => widget.onTap?.call(c),
+                onSubmitted: (c) => onTap?.call(c),
               ),
             ),
             const SizedBox(width: 8.0),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: buttonSize(),
-              height: buttonSize(),
-              decoration: BoxDecoration(
-                  color: getButtonColor(),
-                  shape: BoxShape.circle
-              ),
-              child: InkWell(
-                overlayColor: WidgetStatePropertyAll(Colors.transparent),
-                onLongPress: _hasText ? null : () => widget.longPress?.call(),
-                onLongPressUp: _hasText ? null : () => widget.longPressUp?.call(),
-                child: IconButton(
-                  onPressed: _hasText ? () => widget.onTap?.call(widget.messageController.text) : null,
-                  icon: Icon(
-                    _hasText ? Icons.arrow_upward : Icons.mic,
-                    color: getIconColor(),
-                    size: iconSize(),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onLongPressStart: hasText ? null : (_) {
+                HapticFeedback.lightImpact();
+                longPress?.call();
+                },
+              onLongPressEnd: hasText ? null : (_) {
+                HapticFeedback.lightImpact();
+                longPressUp?.call();
+              },
+              onTap: hasText ? () => onTap?.call(messageController.text) : null,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: _buttonSize(),
+                height: _buttonSize(),
+                decoration: BoxDecoration(color: _getButtonColor(), shape: BoxShape.circle),
+                child: Center(
+                  child: Icon(
+                    hasText ? Icons.arrow_upward : Icons.mic,
+                    color: _getIconColor(),
+                    size: _iconSize(),
                   ),
                 ),
               ),
-            ),
+            )
           ],
         ),
       ),
     );
   }
 
-  double iconSize() => widget.buttonState == "listening" ? 40.0 : 20.0;
-  double buttonSize() => widget.buttonState == "listening" ? 68.0 : 48.0;
+  double _iconSize() => buttonState == "listening" ? 40.0 : 20.0;
 
-  Color getButtonColor() => switch (widget.buttonState) {
+  double _buttonSize() => buttonState == "listening" ? 68.0 : 48.0;
+
+  Color _getButtonColor() => switch (buttonState) {
     'listening' => Colors.green,
     'has_text' => Colors.blueAccent,
     _ => Colors.white,
   };
 
-  Color getIconColor() => switch (widget.buttonState) {
+  Color _getIconColor() => switch (buttonState) {
     'listening' => Colors.white,
     'has_text' => Colors.white,
     _ => Colors.black,
   };
-
 }

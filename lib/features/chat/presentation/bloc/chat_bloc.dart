@@ -114,6 +114,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
     emit(
       state.copyWith(
+        transcription: "",
         messages: messages,
         isLoading: true,
         error: null,
@@ -208,6 +209,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       state.copyWith(
         messages: updated,
         isLoading: false,
+        transcription: "",
         showLimitExceededDialog: showLimitDialog,
       ),
     );

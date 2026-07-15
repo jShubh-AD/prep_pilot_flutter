@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:typed_data';
 
 import 'package:record/record.dart';
@@ -44,6 +45,7 @@ class MicrophoneService {
 
   Future<void> stopListeningMicrophone() async {
     await _recorder.stop();
+    _amplitudeTimer?.cancel();
     _amplitudeTimer = null;
     _audioStream = null;
   }

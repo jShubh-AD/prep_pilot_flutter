@@ -14,62 +14,64 @@ class MicOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Theme.of(context).primaryColor;
 
-    return Material(
-      color: Colors.black12,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                _Pulse(
-                  scale: scale + 0.4,
-                  color: color,
-                  opacity: 0.15,
-                ),
-                _Pulse(
-                  scale: scale + 0.2,
-                  color: color,
-                  opacity: 0.25,
-                ),
-
-                // Fixed mic
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
+    return IgnorePointer(
+      child: Material(
+        color: Colors.black12,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  _Pulse(
+                    scale: scale + 0.4,
                     color: color,
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withValues(alpha: 0.35),
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      ),
-                    ],
+                    opacity: 0.15,
                   ),
-                  child: const Icon(
-                    Icons.mic,
+                  _Pulse(
+                    scale: scale + 0.2,
+                    color: color,
+                    opacity: 0.25,
+                  ),
+      
+                  // Fixed mic
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: color,
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.35),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.mic,
+                      color: Colors.white,
+                      size: 50,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 300),
+                child: Text(
+                  transcription.isEmpty ? "Listening..." : transcription,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
                     color: Colors.white,
-                    size: 50,
+                    fontSize: 18,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 300),
-              child: Text(
-                transcription.isEmpty ? "Listening..." : transcription,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

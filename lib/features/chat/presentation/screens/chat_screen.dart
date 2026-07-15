@@ -26,16 +26,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final ScrollController _scrollController = ScrollController();
 
+  bool get hasText => messageController.text.isNotEmpty;
+
   @override
   void initState() {
     super.initState();
     focusNode.requestFocus();
     context.read<ChatBloc>().add(InitChatSession(widget.subject));
-    messageController.addListener(_messageControllerListener);
-  }
-
-  void _messageControllerListener(){
-    setState(() {});
   }
 
   @override
@@ -59,10 +56,11 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _sendMessage(String text) {
-    if (text.trim().isEmpty) return;
+    final message = text.trim();
+    if (message.isEmpty) return;
     context.read<ChatBloc>().add(
       SendChatMessage(
-        messageText: text,
+        messageText: message,
         subjectId: widget.subject.subjectId ?? 7,
       ),
     );
@@ -80,10 +78,10 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return BlocConsumer<ChatBloc, ChatState>(
       listener: (context, state) {
-        if(state.showMicOverlay){
-          if (state.transcription.isNotEmpty && state.transcription != messageController.text){
-            messageController.text = state.transcription;
-          }
+        if (!state.showMicOverlay &&
+            state.transcription.isNotEmpty &&
+            state.transcription != messageController.text) {
+          messageController.text = state.transcription;
         }
         if(state.showLimitExceededDialog){
           showFreeLimitDialog(context, usedTokens: 20000, refreshAt: _nextMidnight());
@@ -164,13 +162,19 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
 
                 // Message Input Field
-                ChatInputBox(
-                  onTap: state.isLoading ? null : _sendMessage,
-                  longPress: state.isLoading ? null :  onLongPressDown,
-                  longPressUp: state.isLoading ? null :  onLongPressUp,
-                  messageController: messageController,
-                  focusNode: focusNode,
-                  buttonState: getButtonState(showMicOverlay),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: messageController,
+                  builder: (BuildContext context, value, Widget? child) {
+                    return ChatInputBox(
+                      onTap: state.isLoading ? null : _sendMessage,
+                      longPress: state.isLoading ? null :  onLongPressDown,
+                      longPressUp: state.isLoading ? null :  onLongPressUp,
+                      messageController: messageController,
+                      focusNode: focusNode,
+                      hasText: value.text.isNotEmpty,
+                      buttonState: getButtonState(showMicOverlay, value),
+                    );
+                  },
                 ),
               ],
             ),
@@ -180,9 +184,9 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  String getButtonState(bool isListening){
+  String getButtonState(bool isListening, TextEditingValue v){
     if (isListening) return 'listening';
-    if (messageController.text.isNotEmpty) return 'has_text';
+    if (v.text.isNotEmpty) return 'has_text';
     return "idle";
   }
 
@@ -190,6 +194,7 @@ class _ChatScreenState extends State<ChatScreen> {
     context.read<ChatBloc>().add(StartAudioTranscription());
   }
   Future<void> onLongPressUp() async {
+    print("longpressup called");
     context.read<ChatBloc>().add(StopAudioTranscription());
   }
 }
