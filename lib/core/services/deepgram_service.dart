@@ -29,6 +29,7 @@ class DeepgramService {
     final uri = Uri.parse(
       "wss://api.deepgram.com/v1/listen"
           "?model=nova-3"
+          "&language=multi"
           "&encoding=linear16"
           "&sample_rate=16000"
           "&channels=1"
